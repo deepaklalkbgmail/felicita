@@ -43,7 +43,7 @@ include __DIR__ . '/includes/header.php';
 <div class="login-wrap">
   <div class="login-card">
     <div class="logo">
-      <!-- Aaravam logo with Maveli -->
+      <!-- Aaravam logo with Maveli — constrained inside the card -->
       <img
         src="<?= APP_URL ?>/assets/img/aaravam-logo.png"
         alt="Aaravam 2026"
@@ -53,17 +53,17 @@ include __DIR__ . '/includes/header.php';
         <div class="lotus">🪷</div>
         <h2><?= APP_NAME ?></h2>
       </div>
-      <p style="margin-top:6px;">Onam Sadhya Ticketing System</p>
+      <p style="margin-top:4px;font-size:.88rem;">Onam Sadhya Ticketing System</p>
       <!-- Sponsor badge -->
-      <div style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;
+      <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;
                   background:rgba(44,62,107,.07);border:1px solid rgba(44,62,107,.15);
                   border-radius:20px;padding:4px 12px 4px 6px;">
         <img
           src="<?= APP_URL ?>/assets/img/mmg-logo.png"
           alt="MMG"
-          style="height:20px;width:auto;object-fit:contain;"
+          style="height:18px;width:auto;object-fit:contain;max-width:40px;"
           onerror="this.style.display='none'">
-        <span style="font-size:.72rem;color:#4a6080;font-weight:600;letter-spacing:.03em;">Powered by Meta Mates Group</span>
+        <span style="font-size:.7rem;color:#4a6080;font-weight:600;letter-spacing:.03em;">Powered by Meta Mates Group</span>
       </div>
     </div>
 

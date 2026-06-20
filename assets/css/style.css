@@ -376,8 +376,9 @@ tbody td strong { color: var(--text-dark); }
 .login-card {
   background:#fff;
   border-radius:var(--radius-lg);
-  padding:40px 36px;
+  padding:36px 32px;
   width:100%; max-width:400px;
+  overflow: hidden;          /* prevent logo from blowing out the card */
   box-shadow:0 16px 48px rgba(0,0,0,.25);
 }
 .login-card .logo { text-align:center; margin-bottom:28px; }
@@ -521,12 +522,13 @@ tbody td strong { color: var(--text-dark); }
 
 /* ── Aaravam logo on login page ─────────────────────────────────────── */
 .login-aaravam-logo {
+  display: block;
   width: 200px;
-  max-width: 80vw;
+  max-width: 100%;   /* never overflow parent */
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 4px 16px rgba(0,0,0,.15));
-  margin-bottom: 6px;
+  margin: 0 auto 6px;
 }
 .login-card .logo { text-align: center; margin-bottom: 24px; }
 
