@@ -93,7 +93,11 @@ include __DIR__ . '/../includes/header.php';
 <script>
 const APP_URL = '<?= APP_URL ?>';
 let html5QrcodeScanner = null;
-let recentLog = [];
+let recentLog   = [];
+let _currentCode = null;   // the secret code / order id currently shown
+
+const RELATION_OPTIONS = ['Self','Spouse','Son','Daughter','Father','Mother',
+  'Brother','Sister','Guest','Neighbour','Relative','Other'];
 
 // ── Tab switching ──────────────────────────────────────────────────────
 document.querySelectorAll('#input-tabs .tab').forEach(tab => {
@@ -140,15 +144,65 @@ function lookupCode(e){
 
 // ── Fetch booking ──────────────────────────────────────────────────────
 async function fetchBooking(code){
-  showResult('<div style="text-align:center;padding:24px;">⏳ Looking up…</div>');
+  _currentCode = code;
+  showResult('<div class="card"><div style="text-align:center;padding:24px;">⏳ Looking up…</div></div>');
   try {
     const res  = await fetch(`${APP_URL}/api/validate.php?code=${encodeURIComponent(code)}`);
     const data = await res.json();
-    if(!data.success){ showResult(renderError(data.message || 'Not found.')); return; }
+    if(!data.success){ showResult(renderError(data.message || 'Invalid code. No booking found.')); return; }
     showResult(renderBooking(data.booking));
   } catch(err){
     showResult(renderError('Network error. Please try again.'));
   }
+}
+
+// ── Build a single relation row ─────────────────────────────────────────
+function relationRowHtml(idx){
+  const opts = RELATION_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
+  return `<div class="relation-row" data-idx="${idx}" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+    <span style="font-weight:700;color:var(--kasavu-deep);min-width:22px;">${idx+1}.</span>
+    <select class="form-control relation-select" style="flex:1;" onchange="onRelationChange(this)">
+      <option value="">— Select Relation —</option>
+      ${opts}
+    </select>
+    <input type="text" class="form-control relation-other" placeholder="Specify" style="flex:1;display:none;">
+    <button type="button" class="btn btn-sm btn-secondary remove-row" onclick="removeRelationRow(this)" title="Remove">✕</button>
+  </div>`;
+}
+
+function onRelationChange(sel){
+  const other = sel.parentElement.querySelector('.relation-other');
+  other.style.display = (sel.value === 'Other') ? 'block' : 'none';
+}
+
+function addRelationRow(){
+  const list = document.getElementById('relation-list');
+  if(!list) return;
+  const remaining = parseInt(list.dataset.remaining);
+  const current   = list.querySelectorAll('.relation-row').length;
+  if(current >= remaining){
+    showFlash(`Only ${remaining} plate(s) remaining for this booking.`, 'warning');
+    return;
+  }
+  list.insertAdjacentHTML('beforeend', relationRowHtml(current));
+  renumberRows();
+}
+
+function removeRelationRow(btn){
+  const list = document.getElementById('relation-list');
+  if(list.querySelectorAll('.relation-row').length <= 1){
+    showFlash('At least one person is required.', 'warning');
+    return;
+  }
+  btn.closest('.relation-row').remove();
+  renumberRows();
+}
+
+function renumberRows(){
+  document.querySelectorAll('#relation-list .relation-row').forEach((row,i)=>{
+    row.dataset.idx = i;
+    row.querySelector('span').textContent = (i+1) + '.';
+  });
 }
 
 // ── Render booking card ────────────────────────────────────────────────
@@ -168,45 +222,33 @@ function renderBooking(b){
 
   let historyHtml = '';
   if(b.history && b.history.length > 0){
-    historyHtml = '<div style="margin-top:12px;font-size:.82rem;color:var(--text-mid);">'
+    historyHtml = '<div style="margin-top:12px;font-size:.82rem;color:var(--text-mid);"><strong>Already served:</strong>'
       + b.history.map((h,i) => `<div style="padding:4px 0;border-bottom:1px dashed rgba(200,150,12,.15);">
-          <strong>#${i+1}</strong> ${escHtml(h.relation)} — ${new Date(h.served_at.replace(' ','T')).toLocaleTimeString()}
+          <strong>#${i+1}</strong> ${escHtml(h.relation)} — ${fmtTime(h.served_at)}
         </div>`).join('') + '</div>';
   }
 
   const limitWarning = remaining === 0 ? `
     <div class="limit-alert">
       ⛔ <strong>LIMIT REACHED</strong> — All ${total} plate(s) have been served.<br>
-      ${b.history ? b.history.map(h => `&bull; ${escHtml(h.relation)} at ${new Date(h.served_at.replace(' ','T')).toLocaleTimeString()}`).join('<br>') : ''}
+      ${b.history ? b.history.map(h => `&bull; ${escHtml(h.relation)} at ${fmtTime(h.served_at)}`).join('<br>') : ''}
     </div>` : '';
 
+  // Multi-plate consume form
   const consumeForm = remaining > 0 ? `
     <div style="margin-top:16px;padding-top:16px;border-top:2px dashed rgba(200,150,12,.2);">
-      <h4>🍛 Mark Plate as Served</h4>
-      <div class="form-group" style="margin-top:12px;">
-        <label>Relation to House Owner <span class="req">*</span></label>
-        <select id="relation-input" class="form-control">
-          <option value="">— Select Relation —</option>
-          <option>Self</option>
-          <option>Spouse</option>
-          <option>Son</option>
-          <option>Daughter</option>
-          <option>Father</option>
-          <option>Mother</option>
-          <option>Brother</option>
-          <option>Sister</option>
-          <option>Guest</option>
-          <option>Neighbour</option>
-          <option>Relative</option>
-          <option>Other</option>
-        </select>
+      <h4>🍛 Serve Plate(s)</h4>
+      <p style="font-size:.82rem;color:var(--text-mid);margin:6px 0 12px;">
+        Add one row per person being served. Up to <strong>${remaining}</strong> can be served now.
+      </p>
+      <div id="relation-list" data-remaining="${remaining}" data-bid="${b.id}">
+        ${relationRowHtml(0)}
       </div>
-      <div id="other-relation-wrap" style="display:none;" class="form-group">
-        <label>Specify Relation</label>
-        <input type="text" id="other-relation" class="form-control" placeholder="e.g. Uncle">
-      </div>
-      <button class="btn btn-success btn-block" onclick="servePlate(${b.id})">
-        ✅ Confirm & Serve Plate
+      <button type="button" class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="addRelationRow()">
+        ➕ Add another person
+      </button>
+      <button type="button" class="btn btn-success btn-block" style="margin-top:14px;" onclick="servePlates(${b.id})">
+        ✅ Confirm & Serve
       </button>
     </div>` : '';
 
@@ -215,7 +257,7 @@ function renderBooking(b){
       <div>
         <h4>🏠 ${escHtml(b.house_name)}</h4>
         <p style="font-size:.88rem;margin-top:2px;">${escHtml(b.owner_name)} &bull; ${escHtml(b.contact_number)}</p>
-        <p style="font-size:.78rem;color:var(--text-mid);">Order: ${escHtml(b.order_id)}</p>
+        <p style="font-size:.78rem;color:var(--text-mid);">Order: ${escHtml(b.order_id)} &bull; Code: ${escHtml(b.secret_code)}</p>
       </div>
       <div style="text-align:right;">
         <div style="font-size:2rem;font-weight:700;color:var(--kasavu-deep);">${remaining}</div>
@@ -247,55 +289,45 @@ function renderError(msg){
   </div>`;
 }
 
-// ── Serve plate ────────────────────────────────────────────────────────
-let _currentBookingId = null;
-
 function showResult(html){
   const area = document.getElementById('result-area');
   area.innerHTML = html;
   area.style.display = 'block';
   area.scrollIntoView({behavior:'smooth', block:'start'});
-
-  // Cache booking id from hidden data attr
-  const el = area.querySelector('[data-bid]');
-  if(el) _currentBookingId = parseInt(el.dataset.bid);
 }
 
-// Override to capture bid
-function renderBookingCapture(b){
-  _currentBookingId = b.id;
-  const html = renderBooking(b);
-  return html;
-}
-
-async function servePlate(bid){
-  const sel = document.getElementById('relation-input');
-  let relation = sel ? sel.value : '';
-  if(relation === 'Other'){
-    relation = document.getElementById('other-relation').value.trim();
+// ── Serve one or more plates ────────────────────────────────────────────
+async function servePlates(bid){
+  const rows = document.querySelectorAll('#relation-list .relation-row');
+  const relations = [];
+  for(const row of rows){
+    const sel = row.querySelector('.relation-select');
+    let val = sel.value;
+    if(val === 'Other'){
+      val = row.querySelector('.relation-other').value.trim();
+    }
+    if(!val){ showFlash('Please select a relation for every person.', 'warning'); return; }
+    relations.push(val);
   }
-  if(!relation){ showFlash('Please select a relation.','warning'); return; }
+  if(relations.length === 0){ showFlash('Add at least one person.', 'warning'); return; }
 
   const fd = new FormData();
   fd.append('booking_id', bid);
-  fd.append('relation',   relation);
+  relations.forEach(r => fd.append('relations[]', r));
 
   try {
     const res  = await fetch(`${APP_URL}/api/consume.php`, { method:'POST', body:fd });
     const data = await res.json();
 
     if(data.success){
-      showFlash(`✅ Plate served for: ${relation}`, 'success');
-      addToLog(bid, relation);
-      // Re-lookup to refresh UI
-      const codeEl = document.getElementById('code-input');
-      // Re-fetch by order from result
-      const orderEl = document.querySelector('.validation-result p');
-      fetchBooking(bid.toString()); // use booking ID — validate.php handles it
+      showFlash(`✅ ${data.served} plate(s) served: ${relations.join(', ')}`, 'success');
+      relations.forEach(r => addToLog(bid, r));
+      // Re-fetch using the ORIGINAL code (fixes the "Invalid" bug)
+      if(_currentCode){ fetchBooking(_currentCode); }
     } else if(data.message === 'limit_reached'){
       showResult(renderLimitReached(data));
     } else {
-      showFlash(data.message || 'Error serving plate.', 'danger');
+      showFlash(data.message || 'Error serving plate(s).', 'danger');
     }
   } catch(err){
     showFlash('Network error.', 'danger');
@@ -304,7 +336,7 @@ async function servePlate(bid){
 
 function renderLimitReached(data){
   const histList = (data.history||[]).map((h,i)=>
-    `<li><strong>#${i+1}</strong> ${escHtml(h.relation)} — ${new Date(h.served_at.replace(' ','T')).toLocaleTimeString()}</li>`
+    `<li><strong>#${i+1}</strong> ${escHtml(h.relation)} — ${fmtTime(h.served_at)}</li>`
   ).join('');
   return `<div class="card validation-result danger">
     <div class="limit-alert" style="font-size:1rem;">
@@ -320,15 +352,15 @@ function renderLimitReached(data){
 }
 
 function clearResult(){
+  _currentCode = null;
   document.getElementById('result-area').style.display = 'none';
   document.getElementById('result-area').innerHTML = '';
   document.getElementById('code-input').value = '';
 }
 
 function addToLog(bid, relation){
-  const now = new Date().toLocaleTimeString();
-  recentLog.unshift({ bid, relation, time: now });
-  if(recentLog.length > 20) recentLog.pop();
+  recentLog.unshift({ bid, relation, time: new Date().toLocaleTimeString() });
+  if(recentLog.length > 30) recentLog.pop();
   renderLog();
 }
 
@@ -337,27 +369,21 @@ function renderLog(){
   if(recentLog.length === 0) return;
   document.getElementById('recent-list').innerHTML = recentLog.map(l =>
     `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(200,150,12,.12);font-size:.85rem;">
-      <span>Booking #${l.bid} — ${escHtml(l.relation)}</span>
+      <span>${escHtml(l.relation)}</span>
       <span style="color:var(--text-mid);">${l.time}</span>
     </div>`
   ).join('');
 }
 
-// Show "Other" text field
-document.addEventListener('change', function(e){
-  if(e.target.id === 'relation-input'){
-    document.getElementById('other-relation-wrap').style.display =
-      e.target.value === 'Other' ? 'block' : 'none';
-  }
-});
-
-function escHtml(s){
-  if(!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function fmtTime(ts){
+  try { return new Date(String(ts).replace(' ','T')).toLocaleTimeString(); }
+  catch(e){ return ts; }
 }
 
-// Intercept showResult to capture bookingId
-const _origShow = showResult;
+function escHtml(s){
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

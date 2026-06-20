@@ -18,38 +18,81 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $bookingId   = (int)($_POST['booking_id'] ?? 0);
-$relation    = trim($_POST['relation']    ?? '');
 $validatorId = isAdmin() ? null : (int)($_SESSION['validator_id'] ?? null);
 
-if (!$bookingId || !$relation) {
-    jsonOut(['success' => false, 'message' => 'Booking ID and relation are required.']);
+// Accept either a single relation or an array of relations (multi-plate)
+$relations = [];
+if (isset($_POST['relations']) && is_array($_POST['relations'])) {
+    $relations = $_POST['relations'];
+} elseif (!empty($_POST['relation'])) {
+    $relations = [$_POST['relation']];
 }
 
-if (strlen($relation) > 120) {
-    jsonOut(['success' => false, 'message' => 'Relation text too long.']);
+// Clean up
+$relations = array_values(array_filter(array_map(function ($r) {
+    return substr(trim((string)$r), 0, 120);
+}, $relations), fn($r) => $r !== ''));
+
+if (!$bookingId || count($relations) === 0) {
+    jsonOut(['success' => false, 'message' => 'Booking ID and at least one relation are required.']);
 }
 
 $db = getDB();
-$st = $db->prepare("SELECT id, house_name, headcount FROM bookings WHERE id=? LIMIT 1");
+$st = $db->prepare("
+    SELECT b.id, b.house_name, b.headcount,
+           (SELECT COUNT(*) FROM consumption c WHERE c.booking_id = b.id) AS consumed
+    FROM   bookings b WHERE b.id = ? LIMIT 1");
 $st->execute([$bookingId]);
 $row = $st->fetch();
+
 if (!$row) {
     jsonOut(['success' => false, 'message' => 'Booking not found.']);
 }
 
-$result = consumePlate($bookingId, $relation, $validatorId);
+$headcount = (int)$row['headcount'];
+$consumed  = (int)$row['consumed'];
+$remaining = $headcount - $consumed;
 
-if (!$result['success'] && $result['message'] === 'limit_reached') {
+// If nothing left at all → limit reached
+if ($remaining <= 0) {
     $st2 = $db->prepare("SELECT relation, served_at FROM consumption WHERE booking_id=? ORDER BY served_at ASC");
     $st2->execute([$bookingId]);
-    $history = $st2->fetchAll();
     jsonOut([
         'success'    => false,
         'message'    => 'limit_reached',
         'house_name' => $row['house_name'],
-        'headcount'  => $row['headcount'],
-        'history'    => $history,
+        'headcount'  => $headcount,
+        'history'    => $st2->fetchAll(),
     ]);
 }
 
-jsonOut($result);
+// If more requested than remaining → reject the whole batch (validator must re-check)
+if (count($relations) > $remaining) {
+    jsonOut([
+        'success'   => false,
+        'message'   => "Only $remaining plate(s) remaining, but you tried to serve " . count($relations) . ".",
+        'remaining' => $remaining,
+    ]);
+}
+
+// Insert all in a transaction
+$db->beginTransaction();
+try {
+    $ins = $db->prepare("INSERT INTO consumption (booking_id, relation, validator_id) VALUES (?,?,?)");
+    foreach ($relations as $rel) {
+        $ins->execute([$bookingId, $rel, $validatorId]);
+    }
+    $db->commit();
+} catch (Exception $e) {
+    $db->rollBack();
+    jsonOut(['success' => false, 'message' => 'Could not record plates. Please try again.']);
+}
+
+$newConsumed = $consumed + count($relations);
+jsonOut([
+    'success'   => true,
+    'served'    => count($relations),
+    'relations' => $relations,
+    'consumed'  => $newConsumed,
+    'remaining' => $headcount - $newConsumed,
+]);
