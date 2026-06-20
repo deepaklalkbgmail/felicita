@@ -53,13 +53,24 @@ $statements = [
     CONSTRAINT fk_booking_agent FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+/* ── Validators ─────────────────────────────────────────────────────────*/
+"CREATE TABLE IF NOT EXISTS validators (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(120) NOT NULL,
+    pin        CHAR(6)      NOT NULL UNIQUE,
+    is_active  TINYINT(1)   NOT NULL DEFAULT 1,
+    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
 /* ── Consumption (one row per plate served) ─────────────────────────────*/
 "CREATE TABLE IF NOT EXISTS consumption (
-    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    booking_id  INT UNSIGNED NOT NULL,
-    relation    VARCHAR(120) NOT NULL,
-    served_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_consumption_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    booking_id   INT UNSIGNED NOT NULL,
+    relation     VARCHAR(120) NOT NULL,
+    validator_id INT UNSIGNED NULL,
+    served_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_consumption_booking   FOREIGN KEY (booking_id)   REFERENCES bookings(id)   ON DELETE CASCADE,
+    CONSTRAINT fk_consumption_validator FOREIGN KEY (validator_id) REFERENCES validators(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
 /* ── Seed default settings ──────────────────────────────────────────────*/

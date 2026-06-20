@@ -41,7 +41,8 @@ $showNav     = $showNav     ?? true;
       <?php if (isAdmin()): ?>
         <a href="<?= APP_URL ?>/admin/index.php"    class="<?= $activeNav==='dashboard' ?'active':'' ?>"><span>📊</span> Dashboard</a>
         <a href="<?= APP_URL ?>/admin/tickets.php"  class="<?= $activeNav==='tickets'   ?'active':'' ?>"><span>🎟</span> Tickets</a>
-        <a href="<?= APP_URL ?>/admin/agents.php"   class="<?= $activeNav==='agents'    ?'active':'' ?>"><span>👥</span> Agents</a>
+        <a href="<?= APP_URL ?>/admin/agents.php"     class="<?= $activeNav==='agents'     ?'active':'' ?>"><span>👥</span> Agents</a>
+        <a href="<?= APP_URL ?>/admin/validators.php" class="<?= $activeNav==='validators' ?'active':'' ?>"><span>🍛</span> Validators</a>
         <a href="<?= APP_URL ?>/admin/reports.php"  class="<?= $activeNav==='reports'   ?'active':'' ?>"><span>📋</span> Reports</a>
         <a href="<?= APP_URL ?>/admin/settings.php" class="<?= $activeNav==='settings'  ?'active':'' ?>"><span>⚙️</span> Settings</a>
         <a href="<?= APP_URL ?>/logout.php" class="btn-logout">Logout</a>

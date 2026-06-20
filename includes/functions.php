@@ -127,7 +127,7 @@ function lookupBooking(string $code): ?array {
     return $row;
 }
 
-function consumePlate(int $bookingId, string $relation): array {
+function consumePlate(int $bookingId, string $relation, ?int $validatorId = null): array {
     $db = getDB();
 
     $st = $db->prepare("
@@ -143,8 +143,8 @@ function consumePlate(int $bookingId, string $relation): array {
         return ['success' => false, 'message' => 'limit_reached', 'consumed' => (int)$row['consumed']];
     }
 
-    $db->prepare("INSERT INTO consumption (booking_id, relation) VALUES (?,?)")
-       ->execute([$bookingId, trim($relation)]);
+    $db->prepare("INSERT INTO consumption (booking_id, relation, validator_id) VALUES (?,?,?)")
+       ->execute([$bookingId, trim($relation), $validatorId]);
 
     $newConsumed = (int)$row['consumed'] + 1;
     return [
@@ -162,6 +162,32 @@ function verifyAgent(string $pin): ?array {
     $st = $db->prepare("SELECT * FROM agents WHERE pin = ? AND is_active = 1 LIMIT 1");
     $st->execute([$pin]);
     return $st->fetch() ?: null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VALIDATOR MANAGEMENT
+═══════════════════════════════════════════════════════════════════════ */
+function getAllValidators(): array {
+    $db = getDB();
+    return $db->query("
+        SELECT v.*,
+               (SELECT COUNT(*) FROM consumption c WHERE c.validator_id = v.id) AS serves
+        FROM validators v
+        ORDER BY v.name
+    ")->fetchAll();
+}
+
+function createValidator(string $name, string $pin): array {
+    $db = getDB();
+    $st = $db->prepare("SELECT id FROM validators WHERE pin = ? LIMIT 1");
+    $st->execute([$pin]);
+    if ($st->fetch()) return ['success' => false, 'message' => 'PIN already in use.'];
+    $db->prepare("INSERT INTO validators (name, pin) VALUES (?,?)")->execute([$name, $pin]);
+    return ['success' => true];
+}
+
+function toggleValidator(int $id, int $currentActive): void {
+    getDB()->prepare("UPDATE validators SET is_active=? WHERE id=?")->execute([1 - $currentActive, $id]);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

@@ -99,10 +99,11 @@ include __DIR__ . '/includes/header.php';
       <form method="POST">
         <input type="hidden" name="role" value="validator">
         <div class="form-group">
-          <label>Validator PIN</label>
-          <input type="password" name="pin" class="form-control pin-input" placeholder="••••••" maxlength="10" required>
+          <label>Your Validator PIN</label>
+          <input type="password" name="pin" class="form-control pin-input" placeholder="••••••" maxlength="6" required>
+          <small style="display:block;margin-top:5px;color:var(--text-mid);font-size:.75rem;">Your personal PIN assigned by the admin.</small>
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Enter Validator Mode</button>
+        <button type="submit" class="btn btn-primary btn-block">🍛 Enter Validator Mode</button>
       </form>
     </div>
 

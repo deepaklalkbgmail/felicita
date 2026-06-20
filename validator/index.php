@@ -5,15 +5,16 @@ require_once __DIR__ . '/../includes/auth.php';
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-if (empty($_SESSION['validator']) && !isAdmin()) {
+if (!isValidator() && !isAdmin()) {
     header('Location: ' . APP_URL . '/login.php?role=validator');
     exit;
 }
 
-$eventName = getSetting('event_name', 'Onam Sadhya');
-$pageTitle  = 'Dining Hall Validator';
-$activeNav  = '';
-$showNav    = isAdmin();
+$eventName     = getSetting('event_name', 'Onam Sadhya');
+$validatorName = $_SESSION['validator_name'] ?? ($_SESSION['admin_user'] ?? 'Admin');
+$pageTitle     = 'Dining Hall Validator';
+$activeNav     = 'validator';
+$showNav       = isAdmin();
 include __DIR__ . '/../includes/header.php';
 ?>
 
@@ -22,6 +23,16 @@ include __DIR__ . '/../includes/header.php';
     <div class="hero-emoji">🍛</div>
     <h2>Dining Hall Validator</h2>
     <p><?= h($eventName) ?></p>
+    <p style="margin-top:4px;">Validator: <strong><?= h($validatorName) ?></strong></p>
+    <?php if (isValidator() && !isAdmin()): ?>
+    <div style="margin-top:12px;">
+      <a href="<?= APP_URL ?>/logout.php" class="btn btn-danger btn-sm">🚪 Logout</a>
+    </div>
+    <?php elseif (isAdmin()): ?>
+    <div style="margin-top:12px;">
+      <a href="<?= APP_URL ?>/admin/index.php" class="btn btn-outline btn-sm">← Back to Admin</a>
+    </div>
+    <?php endif; ?>
   </div>
 
   <div style="max-width:520px;margin:0 auto;">

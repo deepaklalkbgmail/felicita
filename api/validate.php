@@ -7,7 +7,7 @@ header('Content-Type: application/json');
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-if (!isAdmin() && empty($_SESSION['validator'])) {
+if (!isAdmin() && !isValidator()) {
     http_response_code(401);
     jsonOut(['success' => false, 'message' => 'Unauthorised.']);
 }
