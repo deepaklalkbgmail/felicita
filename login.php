@@ -48,6 +48,7 @@ include __DIR__ . '/includes/header.php';
         src="<?= APP_URL ?>/assets/img/aaravam-logo.png"
         alt="Aaravam 2026"
         class="login-aaravam-logo"
+        style="display:block;width:220px;max-width:100%;height:auto;margin:0 auto 6px;"
         onerror="this.style.display='none';document.getElementById('login-logo-fallback').style.display='block'">
       <div id="login-logo-fallback" style="display:none;">
         <div class="lotus">🪷</div>

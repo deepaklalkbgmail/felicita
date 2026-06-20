@@ -1,6 +1,8 @@
 <div class="footer-sponsor">
   <span>Powered by</span>
-  <img src="<?= APP_URL ?>/assets/img/mmg-logo.png" alt="Meta Mates Group" onerror="this.style.display='none'">
+  <img src="<?= APP_URL ?>/assets/img/mmg-logo.png" alt="Meta Mates Group"
+       style="height:28px;width:auto;max-width:60px;object-fit:contain;"
+       onerror="this.style.display='none'">
   <strong>Meta Mates Group</strong>
 </div>
 
@@ -16,6 +18,7 @@
       src="<?= APP_URL ?>/assets/img/mmg-logo.png"
       alt="Meta Mates Group"
       class="loader-mmg-img"
+      style="width:140px;max-width:50vw;height:auto;object-fit:contain;"
       onerror="this.style.display='none';document.getElementById('loader-fallback').style.display='block'">
     <div id="loader-fallback" style="display:none;font-size:3rem;">⬡</div>
     <div class="loader-brand-name">Meta Mates Group</div>

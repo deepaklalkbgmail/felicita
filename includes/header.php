@@ -16,7 +16,7 @@ $showNav     = $showNav     ?? true;
   <title><?= h($pageTitle) ?> — <?= APP_NAME ?></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
+  <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
   <meta name="theme-color" content="#C8960C">
   <?= $extraHead ?? '' ?>
 </head>
@@ -30,6 +30,7 @@ $showNav     = $showNav     ?? true;
         src="<?= APP_URL ?>/assets/img/aaravam-logo.png"
         alt="Aaravam 2026"
         class="header-aaravam-logo"
+        style="height:40px;width:auto;max-width:160px;object-fit:contain;"
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <div class="brand-text" style="display:none;">
         <h1><?= APP_NAME ?></h1>
@@ -52,7 +53,9 @@ $showNav     = $showNav     ?? true;
   </div>
   <div class="pookalam-strip"></div>
   <div class="sponsor-bar">
-    <img src="<?= APP_URL ?>/assets/img/mmg-logo.png" alt="MMG" onerror="this.style.display='none'">
+    <img src="<?= APP_URL ?>/assets/img/mmg-logo.png" alt="MMG"
+         style="height:22px;width:auto;max-width:44px;object-fit:contain;"
+         onerror="this.style.display='none'">
     <span>Powered by <strong>Meta Mates Group</strong></span>
   </div>
 </header>
