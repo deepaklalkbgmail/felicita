@@ -26,8 +26,12 @@ $showNav     = $showNav     ?? true;
 <header class="app-header">
   <div class="header-inner">
     <a href="<?= APP_URL ?>/admin/index.php" class="brand">
-      <span class="brand-icon">🪷</span>
-      <div class="brand-text">
+      <img
+        src="<?= APP_URL ?>/assets/img/aaravam-logo.png"
+        alt="Aaravam 2026"
+        class="header-aaravam-logo"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="brand-text" style="display:none;">
         <h1><?= APP_NAME ?></h1>
         <small>Onam Sadhya Manager</small>
       </div>
@@ -47,6 +51,10 @@ $showNav     = $showNav     ?? true;
     </nav>
   </div>
   <div class="pookalam-strip"></div>
+  <div class="sponsor-bar">
+    <img src="<?= APP_URL ?>/assets/img/mmg-logo.png" alt="MMG" onerror="this.style.display='none'">
+    <span>Powered by <strong>Meta Mates Group</strong></span>
+  </div>
 </header>
 <?php endif; ?>
 
