@@ -584,20 +584,21 @@ strong { color: var(--text); }
 <div class="toc">
   <h3>📑 Contents</h3>
   <div class="toc-grid">
-    <a class="toc-item" href="#overview">    <span class="toc-num">01</span> Overview & User Roles</a>
-    <a class="toc-item" href="#setup">       <span class="toc-num">02</span> Installation & Setup</a>
-    <a class="toc-item" href="#login">       <span class="toc-num">03</span> Logging In</a>
-    <a class="toc-item" href="#admin">       <span class="toc-num">04</span> Admin — Dashboard</a>
-    <a class="toc-item" href="#agents-mgmt"> <span class="toc-num">05</span> Admin — Managing Agents</a>
-    <a class="toc-item" href="#tickets">     <span class="toc-num">06</span> Admin — Tickets & VIP</a>
-    <a class="toc-item" href="#reports">     <span class="toc-num">07</span> Admin — Reports & Export</a>
-    <a class="toc-item" href="#settings">    <span class="toc-num">08</span> Admin — Settings</a>
-    <a class="toc-item" href="#agent">       <span class="toc-num">09</span> Agent — Booking a Family</a>
-    <a class="toc-item" href="#validator">   <span class="toc-num">10</span> Validator — Check-in</a>
-    <a class="toc-item" href="#codes">       <span class="toc-num">11</span> Secret Code & QR Code</a>
-    <a class="toc-item" href="#fraud">       <span class="toc-num">12</span> Fraud / Limit Reached</a>
-    <a class="toc-item" href="#checklist">   <span class="toc-num">13</span> Event Day Checklist</a>
-    <a class="toc-item" href="#trouble">     <span class="toc-num">14</span> Troubleshooting</a>
+    <a class="toc-item" href="#overview">      <span class="toc-num">01</span> Overview & User Roles</a>
+    <a class="toc-item" href="#setup">         <span class="toc-num">02</span> Installation & Setup</a>
+    <a class="toc-item" href="#login">         <span class="toc-num">03</span> Logging In</a>
+    <a class="toc-item" href="#admin">         <span class="toc-num">04</span> Admin — Dashboard</a>
+    <a class="toc-item" href="#agents-mgmt">   <span class="toc-num">05</span> Admin — Managing Agents</a>
+    <a class="toc-item" href="#validators-mgmt"><span class="toc-num">06</span> Admin — Managing Validators</a>
+    <a class="toc-item" href="#tickets">       <span class="toc-num">07</span> Admin — Tickets & VIP</a>
+    <a class="toc-item" href="#reports">       <span class="toc-num">08</span> Admin — Reports & Export</a>
+    <a class="toc-item" href="#settings">      <span class="toc-num">09</span> Admin — Settings</a>
+    <a class="toc-item" href="#agent">         <span class="toc-num">10</span> Agent — Booking a Family</a>
+    <a class="toc-item" href="#validator">     <span class="toc-num">11</span> Validator — Check-in</a>
+    <a class="toc-item" href="#codes">         <span class="toc-num">12</span> Secret Code & QR Code</a>
+    <a class="toc-item" href="#fraud">         <span class="toc-num">13</span> Fraud / Limit Reached</a>
+    <a class="toc-item" href="#checklist">     <span class="toc-num">14</span> Event Day Checklist</a>
+    <a class="toc-item" href="#trouble">       <span class="toc-num">15</span> Troubleshooting</a>
   </div>
 </div>
 
@@ -619,7 +620,7 @@ strong { color: var(--text); }
       <tr>
         <td><strong>🛡 Admin</strong></td>
         <td>Event organisers</td>
-        <td>Dashboard, reports, agents, settings, VIP tickets</td>
+        <td>Dashboard, reports, agents, validators, settings, VIP tickets</td>
         <td>Username + Password at Login page</td>
       </tr>
       <tr>
@@ -632,7 +633,7 @@ strong { color: var(--text); }
         <td><strong>🍛 Validator</strong></td>
         <td>Venue check-in staff</td>
         <td>Scan QR / enter code, mark plates served</td>
-        <td>Validator PIN at Login page</td>
+        <td>Personal Validator PIN at Login page</td>
       </tr>
     </tbody>
   </table>
@@ -672,7 +673,7 @@ strong { color: var(--text); }
     <li><strong>Delete installer:</strong> <strong>Immediately</strong> delete <span class="url-pill">config/install.php</span> from the server after installation.</li>
     <li><strong>Set event details:</strong> Log in as admin → Settings → set the event name, date, venue, and price per plate.</li>
     <li><strong>Add agents:</strong> Admin → Agents → Add each volunteer with their name and a unique PIN.</li>
-    <li><strong>Share validator PIN:</strong> Admin → Settings — note the Validator PIN and share it only with your venue check-in team.</li>
+    <li><strong>Add validators:</strong> Admin → Validators → Add each check-in staff member with their name and a unique PIN. Share each person's PIN privately with them.</li>
   </ol>
 
   <div class="callout callout-warning">
@@ -697,8 +698,8 @@ strong { color: var(--text); }
     <thead><tr><th>Tab</th><th>Credentials Required</th><th>Redirects to</th></tr></thead>
     <tbody>
       <tr><td><strong>Admin</strong></td><td>Username and Password (set by system administrator)</td><td>Admin Dashboard</td></tr>
-      <tr><td><strong>Validator</strong></td><td>Validator PIN (set in Admin → Settings)</td><td>Dining Hall Validator screen</td></tr>
-      <tr><td><strong>Agent</strong></td><td>Personal 4–6 digit PIN (assigned by admin)</td><td>Booking page</td></tr>
+      <tr><td><strong>Validator</strong></td><td>Personal Validator PIN (assigned by admin via Admin → Validators)</td><td>Dining Hall Validator screen</td></tr>
+      <tr><td><strong>Agent</strong></td><td>Personal 4–6 digit PIN (assigned by admin via Admin → Agents)</td><td>Booking page</td></tr>
     </tbody>
   </table>
 
@@ -733,6 +734,8 @@ strong { color: var(--text); }
   </table>
 
   <p>A <strong>consumption progress bar</strong> shows what percentage of sold plates have been served. The bottom of the dashboard shows the 10 most recent bookings including each booking's secret code.</p>
+
+  <p>The admin navigation bar contains quick links to: <strong>Dashboard · Agents · Validators · Tickets · Reports · Settings</strong>.</p>
 </div>
 
 <div class="divider">✿ ❀ ✿</div>
@@ -773,10 +776,53 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 06 Tickets -->
-<div class="section" id="tickets">
+<!-- 06 Validators Management -->
+<div class="section" id="validators-mgmt">
   <div class="section-header">
     <div class="section-num">06</div>
+    <span class="section-icon">🍛</span>
+    <h2>Admin — Managing Validators</h2>
+  </div>
+
+  <p>Each check-in staff member gets their own individual validator account with a personal PIN. Go to <strong>Admin → Validators</strong> to manage them.</p>
+
+  <div class="role-section-admin">
+    <h3>Adding a Validator</h3>
+    <ol class="steps">
+      <li>Go to <strong>Admin → Validators → Add Validator</strong>.</li>
+      <li>Enter the staff member's <strong>name</strong>.</li>
+      <li>Assign a unique <strong>4–6 digit PIN</strong>. Each validator must have their own PIN — do not reuse PINs between validators.</li>
+      <li>Click <strong>Add Validator</strong>. Share the PIN privately with that staff member.</li>
+    </ol>
+  </div>
+
+  <div class="role-section-admin">
+    <h3>Validator Summary Table</h3>
+    <p>The validators list shows each validator's name, PIN, number of plates they have served, and their active/inactive status. This lets you track who served which plates (also visible in Admin → Reports → Check-in Log).</p>
+  </div>
+
+  <div class="role-section-admin">
+    <h3>Activating / Deactivating</h3>
+    <p>Click <strong>Deactivate</strong> to revoke a validator's login. Their serving history is preserved. Click <strong>Activate</strong> to restore access.</p>
+  </div>
+
+  <div class="role-section-admin">
+    <h3>Admin Entering Validator Mode</h3>
+    <p>The admin can operate as a validator directly — no separate PIN needed. On the Validators page, click the <strong>Enter Validator Mode</strong> button. This opens the full validator check-in screen under the admin's session. To return to the admin panel, use the <strong>Back to Admin</strong> link at the top of the validator screen.</p>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">ℹ️</span>
+    <div>Individual validator accounts mean every plate served is attributed to a specific staff member — useful for accountability and post-event auditing.</div>
+  </div>
+</div>
+
+<div class="divider">✿ ❀ ✿</div>
+
+<!-- 07 Tickets -->
+<div class="section" id="tickets">
+  <div class="section-header">
+    <div class="section-num">07</div>
     <span class="section-icon">🎟</span>
     <h2>Admin — Tickets & VIP Bookings</h2>
   </div>
@@ -805,10 +851,10 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 07 Reports -->
+<!-- 08 Reports -->
 <div class="section" id="reports">
   <div class="section-header">
-    <div class="section-num">07</div>
+    <div class="section-num">08</div>
     <span class="section-icon">📋</span>
     <h2>Admin — Reports & Export</h2>
   </div>
@@ -826,7 +872,7 @@ strong { color: var(--text); }
     </tbody>
   </table>
 
-  <p>The page also shows an <strong>Agent-wise Summary</strong> (bookings, plates, revenue per agent) and a <strong>Check-in Log</strong> of the 100 most recent plate servings with timestamps.</p>
+  <p>The page also shows an <strong>Agent-wise Summary</strong> (bookings, plates, revenue per agent) and a <strong>Check-in Log</strong> of the 100 most recent plate servings with timestamps and the name of the validator who served each plate.</p>
 
   <div class="callout callout-success">
     <span class="callout-icon">📥</span>
@@ -836,10 +882,10 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 08 Settings -->
+<!-- 09 Settings -->
 <div class="section" id="settings">
   <div class="section-header">
-    <div class="section-num">08</div>
+    <div class="section-num">09</div>
     <span class="section-icon">⚙️</span>
     <h2>Admin — Settings</h2>
   </div>
@@ -851,7 +897,6 @@ strong { color: var(--text); }
       <tr><td>Event Date</td><td>Displayed on the booking and login pages</td></tr>
       <tr><td>Event Venue</td><td>Informational — appears in the user guide and footer</td></tr>
       <tr><td>Price Per Plate (₹)</td><td>Auto-calculates totals for <em>new</em> bookings only</td></tr>
-      <tr><td>Validator PIN</td><td>PIN for all dining hall check-in staff</td></tr>
     </tbody>
   </table>
 
@@ -865,10 +910,10 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 09 Agent -->
+<!-- 10 Agent -->
 <div class="section" id="agent">
   <div class="section-header">
-    <div class="section-num">09</div>
+    <div class="section-num">10</div>
     <span class="section-icon">🏠</span>
     <h2>Agent — Booking a Family Door-to-Door</h2>
   </div>
@@ -907,6 +952,7 @@ strong { color: var(--text); }
         <tr><td>🖨 Print</td><td>Opens browser print dialog for a physical copy</td></tr>
         <tr><td>📤 Share</td><td>Opens native phone share sheet — send via WhatsApp, SMS, etc. On desktop, copies text to clipboard.</td></tr>
         <tr><td>➕ New Booking</td><td>Clears the form for the next household</td></tr>
+        <tr><td>🚪 Logout</td><td>Ends your session (button is in the page header)</td></tr>
       </tbody>
     </table>
     <div class="callout callout-tip">
@@ -918,20 +964,29 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 10 Validator -->
+<!-- 11 Validator -->
 <div class="section" id="validator">
   <div class="section-header">
-    <div class="section-num">10</div>
+    <div class="section-num">11</div>
     <span class="section-icon">🍛</span>
     <h2>Validator — Dining Hall Check-in</h2>
   </div>
 
-  <p>Validators are stationed at the venue entrance. They verify each family's ticket and mark plates as served.</p>
+  <p>Validators are stationed at the venue entrance. They verify each family's ticket and mark plates as served. Each validator logs in with their own personal PIN assigned by the admin.</p>
+
+  <div class="role-section-validator">
+    <h3>Logging In</h3>
+    <ol class="steps">
+      <li>Go to the login page, tap the <strong>Validator</strong> tab.</li>
+      <li>Enter your personal Validator PIN and tap <strong>Enter Validator Mode</strong>.</li>
+      <li>Your name appears at the top of the check-in screen.</li>
+      <li>To logout when you are done, tap the <strong>🚪 Logout</strong> button at the top right of the screen.</li>
+    </ol>
+  </div>
 
   <div class="role-section-validator">
     <h3>Scanning a QR Code</h3>
     <ol class="steps">
-      <li>Log in using the Validator PIN → tap <strong>Enter Validator Mode</strong>.</li>
       <li>Ensure the <strong>📷 Scan QR</strong> tab is selected.</li>
       <li>Tap <strong>▶ Start Camera</strong> and allow camera access when prompted.</li>
       <li>Point the camera at the family's QR code — the ticket details appear automatically.</li>
@@ -948,28 +1003,34 @@ strong { color: var(--text); }
   </div>
 
   <div class="role-section-validator">
-    <h3>Serving a Plate</h3>
+    <h3>Serving Plates — Single or Multiple at Once</h3>
     <p>The booking card shows how many plates have been served and how many remain. A visual dot row shows each plate's status (🟢 available / 🍽 served).</p>
+    <p>If two or more family members arrive together and scan once, you can serve all of them in a single step:</p>
     <ol class="steps">
-      <li>In the <strong>Mark Plate as Served</strong> section, choose the attendee's <strong>Relation to House Owner</strong> from the dropdown (Self, Spouse, Son, Daughter, Guest, Neighbour, Other, etc.).</li>
-      <li>If <em>Other</em> is selected, type the specific relation in the text box that appears.</li>
-      <li>Tap <strong>✅ Confirm & Serve Plate</strong>.</li>
-      <li>The counter updates immediately. Repeat for each family member.</li>
+      <li>In the <strong>Mark Plates as Served</strong> section, the first row is already shown. Choose the first attendee's <strong>Relation to House Owner</strong> from the dropdown (Self, Spouse, Son, Daughter, Guest, Neighbour, Other, etc.).</li>
+      <li>To add another person, tap <strong>+ Add Another Person</strong>. A new row appears. Fill in their relation.</li>
+      <li>Repeat for each additional person arriving together. You can add as many rows as remaining plates allow.</li>
+      <li>To remove an extra row, tap the <strong>✕</strong> button beside that row.</li>
+      <li>Tap <strong>✅ Confirm & Serve</strong> to record all plates in one go.</li>
+      <li>The counter updates immediately, showing the new remaining count.</li>
     </ol>
-  </div>
-
-  <div class="callout callout-tip">
-    <span class="callout-icon">💡</span>
-    <div>Each plate must be confirmed individually. This creates an accurate, time-stamped record of every person served — useful if any dispute arises later.</div>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div>You cannot add more rows than the number of remaining plates — the system prevents over-serving automatically.</div>
+    </div>
+    <div class="callout callout-info">
+      <span class="callout-icon">📜</span>
+      <div>Every plate serving is permanently recorded with an exact timestamp, the relation, and your validator name — creating an accurate audit trail.</div>
+    </div>
   </div>
 </div>
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 11 Codes -->
+<!-- 12 Codes -->
 <div class="section" id="codes">
   <div class="section-header">
-    <div class="section-num">11</div>
+    <div class="section-num">12</div>
     <span class="section-icon">🔑</span>
     <h2>Secret Code & QR Code Explained</h2>
   </div>
@@ -1008,10 +1069,10 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 12 Fraud -->
+<!-- 13 Fraud -->
 <div class="section" id="fraud">
   <div class="section-header">
-    <div class="section-num">12</div>
+    <div class="section-num">13</div>
     <span class="section-icon">🚨</span>
     <h2>Fraud & Limit Reached Handling</h2>
   </div>
@@ -1032,9 +1093,10 @@ strong { color: var(--text); }
   <table class="guide-table">
     <thead><tr><th>Scenario</th><th>System Response</th><th>Action</th></tr></thead>
     <tbody>
-      <tr><td>Valid code, plates remaining</td><td>Shows booking card with green status</td><td>Serve plate normally</td></tr>
+      <tr><td>Valid code, plates remaining</td><td>Shows booking card with green status</td><td>Serve plate(s) normally</td></tr>
       <tr><td>Valid code, partially consumed</td><td>Shows booking card, yellow partial status</td><td>Serve remaining plates</td></tr>
       <tr><td>Valid code, all plates used</td><td>Red LIMIT REACHED alert with full history</td><td>Do not serve; refer to coordinator</td></tr>
+      <tr><td>Tried to serve more than remaining</td><td>Error: "Only N plate(s) remaining, but you tried to serve M"</td><td>Remove extra rows until count matches remaining</td></tr>
       <tr><td>Invalid / unknown code</td><td>"Invalid code. No booking found."</td><td>Ask family to double-check their code</td></tr>
     </tbody>
   </table>
@@ -1047,10 +1109,10 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 13 Checklist -->
+<!-- 14 Checklist -->
 <div class="section" id="checklist">
   <div class="section-header">
-    <div class="section-num">13</div>
+    <div class="section-num">14</div>
     <span class="section-icon">✅</span>
     <h2>Event Day Checklist</h2>
   </div>
@@ -1060,20 +1122,25 @@ strong { color: var(--text); }
     <li>Price per plate confirmed in Settings</li>
     <li>Event name, date, and venue are set correctly</li>
     <li>All agents have been added with their PINs and confirmed active</li>
-    <li>Validator PIN shared privately with all check-in staff</li>
+    <li>All validators have been added with individual PINs (Admin → Validators) and confirmed active</li>
+    <li>Each validator has been given their personal PIN privately</li>
     <li>Each agent has confirmed their PIN works on the login page</li>
     <li>At least one test booking created and verified end-to-end</li>
     <li>Validator staff have tested camera QR scanning on their device</li>
     <li>Backup manual entry confirmed working (in case of camera issues)</li>
+    <li>Multi-plate serving tested: two or more people served in a single scan</li>
   </ul>
 
   <p style="margin-top:16px;"><strong>On the day (Validators):</strong></p>
   <ul class="checklist">
     <li>Phone charged and browser open to Validator login page</li>
+    <li>Logged in with your personal Validator PIN</li>
     <li>Camera permission granted in the browser</li>
     <li>Bright lighting at the scanning point (helps QR read faster)</li>
     <li>Know how to switch to Manual Entry if QR scan fails</li>
+    <li>Know how to add multiple relation rows for families arriving together</li>
     <li>Know how to reach the admin if a family reports a missing booking</li>
+    <li>Logout when your shift ends (🚪 Logout button on validator screen)</li>
   </ul>
 
   <p style="margin-top:16px;"><strong>On the day (Agents, if still collecting):</strong></p>
@@ -1086,10 +1153,10 @@ strong { color: var(--text); }
 
 <div class="divider">✿ ❀ ✿</div>
 
-<!-- 14 Troubleshooting -->
+<!-- 15 Troubleshooting -->
 <div class="section" id="trouble">
   <div class="section-header">
-    <div class="section-num">14</div>
+    <div class="section-num">15</div>
     <span class="section-icon">🔧</span>
     <h2>Troubleshooting</h2>
   </div>
@@ -1113,9 +1180,19 @@ strong { color: var(--text); }
         <td>Admin → Agents — verify the PIN and check the agent is Active</td>
       </tr>
       <tr>
+        <td>Validator PIN not working</td>
+        <td>Wrong PIN, or validator marked Inactive, or PIN not yet created</td>
+        <td>Admin → Validators — verify the PIN and check the validator is Active. Each validator must have their own individual account created by the admin.</td>
+      </tr>
+      <tr>
         <td>"Invalid code" when scanning</td>
         <td>Wrong code entered, or booking in different system</td>
         <td>Ask family for Order ID (starts with ARV) as alternative; admin can search by name</td>
+      </tr>
+      <tr>
+        <td>"Only N plate(s) remaining" error</td>
+        <td>Too many relation rows added</td>
+        <td>Remove extra rows using the ✕ button until the number matches the remaining plate count</td>
       </tr>
       <tr>
         <td>Booking form shows "Network error"</td>
