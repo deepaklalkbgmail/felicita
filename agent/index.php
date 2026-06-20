@@ -28,6 +28,11 @@ include __DIR__ . '/../includes/header.php';
     <h2>Sadhya Booking</h2>
     <p><?= h($eventName) ?><?= $eventDate ? ' &bull; ' . date('d M Y', strtotime($eventDate)) : '' ?></p>
     <p style="margin-top:4px;">Agent: <strong><?= h($agentName) ?></strong> &bull; Price: <strong>₹<?= number_format($pricePerPlate, 0) ?>/plate</strong></p>
+    <?php if (!empty($_SESSION['agent_id'])): ?>
+    <div style="margin-top:12px;">
+      <a href="<?= APP_URL ?>/logout.php" class="btn btn-danger btn-sm">🚪 Logout</a>
+    </div>
+    <?php endif; ?>
   </div>
 
   <div style="max-width:560px;margin:0 auto;">
