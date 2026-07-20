@@ -20,27 +20,35 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $bookingId   = (int)($_POST['booking_id'] ?? 0);
 $validatorId = isAdmin() ? null : (int)($_SESSION['validator_id'] ?? null);
 
-// Accept either a single relation or an array of relations (multi-plate)
-$relations = [];
-if (isset($_POST['relations']) && is_array($_POST['relations'])) {
-    $relations = $_POST['relations'];
-} elseif (!empty($_POST['relation'])) {
-    $relations = [$_POST['relation']];
+// Each person served is either an 'adult' or a 'kid'
+$rawTypes = [];
+if (isset($_POST['types']) && is_array($_POST['types'])) {
+    $rawTypes = $_POST['types'];
+} elseif (!empty($_POST['type'])) {
+    $rawTypes = [$_POST['type']];
 }
 
-// Clean up
-$relations = array_values(array_filter(array_map(function ($r) {
-    return substr(trim((string)$r), 0, 120);
-}, $relations), fn($r) => $r !== ''));
-
-if (!$bookingId || count($relations) === 0) {
-    jsonOut(['success' => false, 'message' => 'Booking ID and at least one relation are required.']);
+// Normalise to 'adult' / 'kid'
+$types = [];
+foreach ($rawTypes as $t) {
+    $t = strtolower(trim((string)$t));
+    if ($t === 'adult' || $t === 'adults') $types[] = 'adult';
+    elseif ($t === 'kid' || $t === 'kids') $types[] = 'kid';
 }
+
+if (!$bookingId || count($types) === 0) {
+    jsonOut(['success' => false, 'message' => 'Booking ID and at least one Adult/Kid must be selected.']);
+}
+
+$reqAdults = count(array_filter($types, fn($t) => $t === 'adult'));
+$reqKids   = count(array_filter($types, fn($t) => $t === 'kid'));
 
 $db = getDB();
 $st = $db->prepare("
-    SELECT b.id, b.house_name, b.headcount,
-           (SELECT COUNT(*) FROM consumption c WHERE c.booking_id = b.id) AS consumed
+    SELECT b.id, b.house_name, b.headcount, b.plates_adults, b.plates_kids,
+           (SELECT COUNT(*) FROM consumption c WHERE c.booking_id=b.id) AS consumed,
+           (SELECT COUNT(*) FROM consumption c WHERE c.booking_id=b.id AND c.person_type='adult') AS served_adults,
+           (SELECT COUNT(*) FROM consumption c WHERE c.booking_id=b.id AND c.person_type='kid')   AS served_kids
     FROM   bookings b WHERE b.id = ? LIMIT 1");
 $st->execute([$bookingId]);
 $row = $st->fetch();
@@ -49,38 +57,45 @@ if (!$row) {
     jsonOut(['success' => false, 'message' => 'Booking not found.']);
 }
 
-$headcount = (int)$row['headcount'];
-$consumed  = (int)$row['consumed'];
-$remaining = $headcount - $consumed;
+$plateAdults   = (int)$row['plates_adults'];
+$plateKids     = (int)$row['plates_kids'];
+$servedAdults  = (int)$row['served_adults'];
+$servedKids    = (int)$row['served_kids'];
+$remAdults     = $plateAdults - $servedAdults;
+$remKids       = $plateKids   - $servedKids;
 
-// If nothing left at all → limit reached
-if ($remaining <= 0) {
-    $st2 = $db->prepare("SELECT relation, served_at FROM consumption WHERE booking_id=? ORDER BY served_at ASC");
+// Everything already served?
+if ($remAdults <= 0 && $remKids <= 0) {
+    $st2 = $db->prepare("SELECT relation, person_type, served_at FROM consumption WHERE booking_id=? ORDER BY served_at ASC");
     $st2->execute([$bookingId]);
     jsonOut([
         'success'    => false,
         'message'    => 'limit_reached',
         'house_name' => $row['house_name'],
-        'headcount'  => $headcount,
+        'headcount'  => (int)$row['headcount'],
         'history'    => $st2->fetchAll(),
     ]);
 }
 
-// If more requested than remaining → reject the whole batch (validator must re-check)
-if (count($relations) > $remaining) {
-    jsonOut([
-        'success'   => false,
-        'message'   => "Only $remaining plate(s) remaining, but you tried to serve " . count($relations) . ".",
-        'remaining' => $remaining,
-    ]);
+// Per-type limit checks — reject the whole batch if either exceeds
+if ($reqAdults > $remAdults) {
+    jsonOut(['success' => false,
+        'message' => "Only $remAdults adult plate(s) remaining, but you tried to serve $reqAdults.",
+        'remaining_adults' => $remAdults, 'remaining_kids' => $remKids]);
+}
+if ($reqKids > $remKids) {
+    jsonOut(['success' => false,
+        'message' => "Only $remKids kid plate(s) remaining, but you tried to serve $reqKids.",
+        'remaining_adults' => $remAdults, 'remaining_kids' => $remKids]);
 }
 
 // Insert all in a transaction
 $db->beginTransaction();
 try {
-    $ins = $db->prepare("INSERT INTO consumption (booking_id, relation, validator_id) VALUES (?,?,?)");
-    foreach ($relations as $rel) {
-        $ins->execute([$bookingId, $rel, $validatorId]);
+    $ins = $db->prepare("INSERT INTO consumption (booking_id, relation, person_type, validator_id) VALUES (?,?,?,?)");
+    foreach ($types as $t) {
+        $label = $t === 'adult' ? 'Adult' : 'Kid';
+        $ins->execute([$bookingId, $label, $t, $validatorId]);
     }
     $db->commit();
 } catch (Exception $e) {
@@ -88,11 +103,16 @@ try {
     jsonOut(['success' => false, 'message' => 'Could not record plates. Please try again.']);
 }
 
-$newConsumed = $consumed + count($relations);
+$newServedAdults = $servedAdults + $reqAdults;
+$newServedKids   = $servedKids + $reqKids;
+
 jsonOut([
-    'success'   => true,
-    'served'    => count($relations),
-    'relations' => $relations,
-    'consumed'  => $newConsumed,
-    'remaining' => $headcount - $newConsumed,
+    'success'          => true,
+    'served'           => count($types),
+    'served_adults'    => $reqAdults,
+    'served_kids'      => $reqKids,
+    'consumed'         => (int)$row['consumed'] + count($types),
+    'remaining'        => (int)$row['headcount'] - ((int)$row['consumed'] + count($types)),
+    'remaining_adults' => $plateAdults - $newServedAdults,
+    'remaining_kids'   => $plateKids   - $newServedKids,
 ]);

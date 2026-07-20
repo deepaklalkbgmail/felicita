@@ -270,7 +270,9 @@ function lookupBooking(string $code): ?array {
     $st = $db->prepare("
         SELECT b.*,
                a.name AS agent_name,
-               (SELECT COUNT(*) FROM consumption c WHERE c.booking_id = b.id) AS consumed
+               (SELECT COUNT(*) FROM consumption c WHERE c.booking_id = b.id) AS consumed,
+               (SELECT COUNT(*) FROM consumption c WHERE c.booking_id = b.id AND c.person_type='adult') AS served_adults,
+               (SELECT COUNT(*) FROM consumption c WHERE c.booking_id = b.id AND c.person_type='kid')   AS served_kids
         FROM   bookings b
         LEFT JOIN agents a ON a.id = b.agent_id
         WHERE  b.secret_code = ? OR b.order_id = ?
@@ -279,8 +281,12 @@ function lookupBooking(string $code): ?array {
     $row = $st->fetch();
     if (!$row) return null;
 
-    $row['remaining']     = $row['headcount'] - $row['consumed'];
-    $row['remaining_due'] = (float)$row['total_amount'] - (float)$row['paid_amount'];
+    $row['served_adults']    = (int)$row['served_adults'];
+    $row['served_kids']      = (int)$row['served_kids'];
+    $row['remaining']        = $row['headcount'] - $row['consumed'];
+    $row['remaining_adults'] = max(0, (int)$row['plates_adults'] - $row['served_adults']);
+    $row['remaining_kids']   = max(0, (int)$row['plates_kids']   - $row['served_kids']);
+    $row['remaining_due']    = (float)$row['total_amount'] - (float)$row['paid_amount'];
 
     $st2 = $db->prepare("SELECT relation, served_at FROM consumption WHERE booking_id = ? ORDER BY served_at DESC");
     $st2->execute([$row['id']]);

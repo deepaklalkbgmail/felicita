@@ -92,6 +92,7 @@ $statements = [
     id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     booking_id   INT UNSIGNED NOT NULL,
     relation     VARCHAR(120) NOT NULL,
+    person_type  ENUM('adult','kid') NULL,
     validator_id INT UNSIGNED NULL,
     served_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_consumption_booking   FOREIGN KEY (booking_id)   REFERENCES bookings(id)   ON DELETE CASCADE,

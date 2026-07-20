@@ -122,9 +122,6 @@ let recentLog   = [];
 let _currentCode = null;   // the secret code / order id currently shown
 let _currentWing = null;   // { wing, unit } when looked up by wing/door
 
-const RELATION_OPTIONS = ['Self','Spouse','Son','Daughter','Father','Mother',
-  'Brother','Sister','Guest','Neighbour','Relative','Other'];
-
 const _wingUnitCache = {};
 
 // ── Tab switching ──────────────────────────────────────────────────────
@@ -228,53 +225,15 @@ async function fetchBooking(code){
   }
 }
 
-// ── Build a single relation row ─────────────────────────────────────────
-function relationRowHtml(idx){
-  const opts = RELATION_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
-  return `<div class="relation-row" data-idx="${idx}" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-    <span style="font-weight:700;color:var(--kasavu-deep);min-width:22px;">${idx+1}.</span>
-    <select class="form-control relation-select" style="flex:1;" onchange="onRelationChange(this)">
-      <option value="">— Select Relation —</option>
-      ${opts}
-    </select>
-    <input type="text" class="form-control relation-other" placeholder="Specify" style="flex:1;display:none;">
-    <button type="button" class="btn btn-sm btn-secondary remove-row" onclick="removeRelationRow(this)" title="Remove">✕</button>
-  </div>`;
-}
-
-function onRelationChange(sel){
-  const other = sel.parentElement.querySelector('.relation-other');
-  other.style.display = (sel.value === 'Other') ? 'block' : 'none';
-}
-
-function addRelationRow(){
-  const list = document.getElementById('relation-list');
-  if(!list) return;
-  const remaining = parseInt(list.dataset.remaining);
-  const current   = list.querySelectorAll('.relation-row').length;
-  if(current >= remaining){
-    showFlash(`Only ${remaining} plate(s) remaining for this booking.`, 'warning');
-    return;
-  }
-  list.insertAdjacentHTML('beforeend', relationRowHtml(current));
-  renumberRows();
-}
-
-function removeRelationRow(btn){
-  const list = document.getElementById('relation-list');
-  if(list.querySelectorAll('.relation-row').length <= 1){
-    showFlash('At least one person is required.', 'warning');
-    return;
-  }
-  btn.closest('.relation-row').remove();
-  renumberRows();
-}
-
-function renumberRows(){
-  document.querySelectorAll('#relation-list .relation-row').forEach((row,i)=>{
-    row.dataset.idx = i;
-    row.querySelector('span').textContent = (i+1) + '.';
-  });
+// ── Adult / Kid quantity steppers ───────────────────────────────────────
+function stepQty(type, delta){
+  const el = document.getElementById('serve-' + type);
+  if(!el) return;
+  const maxV = parseInt(el.dataset.max) || 0;
+  let v = (parseInt(el.textContent) || 0) + delta;
+  if(v < 0)    v = 0;
+  if(v > maxV) { v = maxV; showFlash(`Only ${maxV} ${type} plate(s) remaining.`, 'warning'); }
+  el.textContent = v;
 }
 
 // ── Render booking card ────────────────────────────────────────────────
@@ -306,20 +265,36 @@ function renderBooking(b){
       ${b.history ? b.history.map(h => `&bull; ${escHtml(h.relation)} at ${fmtTime(h.served_at)}`).join('<br>') : ''}
     </div>` : '';
 
-  // Multi-plate consume form
+  // Per-type remaining
+  const remAdults = parseInt(b.remaining_adults != null ? b.remaining_adults : 0);
+  const remKids   = parseInt(b.remaining_kids   != null ? b.remaining_kids   : 0);
+
+  const stepperRow = (type, label, emoji, max) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;
+                padding:10px 12px;border:1.5px solid rgba(200,150,12,.3);border-radius:10px;
+                ${max<=0?'opacity:.45;':''}">
+      <div>
+        <div style="font-weight:700;">${emoji} ${label}</div>
+        <div style="font-size:.72rem;color:var(--text-mid);">${max} remaining</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button type="button" class="btn btn-secondary btn-sm" style="min-width:38px;font-size:1.2rem;"
+                onclick="stepQty('${type}',-1)" ${max<=0?'disabled':''}>−</button>
+        <span id="serve-${type}" data-max="${max}" style="font-size:1.4rem;font-weight:700;min-width:26px;text-align:center;">0</span>
+        <button type="button" class="btn btn-secondary btn-sm" style="min-width:38px;font-size:1.2rem;"
+                onclick="stepQty('${type}',1)" ${max<=0?'disabled':''}>+</button>
+      </div>
+    </div>`;
+
   const consumeForm = remaining > 0 ? `
     <div style="margin-top:16px;padding-top:16px;border-top:2px dashed rgba(200,150,12,.2);">
-      <h4>🍛 Serve Plate(s)</h4>
+      <h4>🍛 Serve Plates</h4>
       <p style="font-size:.82rem;color:var(--text-mid);margin:6px 0 12px;">
-        Add one row per person being served. Up to <strong>${remaining}</strong> can be served now.
+        Choose how many <strong>Adults</strong> and <strong>Kids</strong> are being served now.
       </p>
-      <div id="relation-list" data-remaining="${remaining}" data-bid="${b.id}">
-        ${relationRowHtml(0)}
-      </div>
-      <button type="button" class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="addRelationRow()">
-        ➕ Add another person
-      </button>
-      <button type="button" class="btn btn-success btn-block" style="margin-top:14px;" onclick="servePlates(${b.id})">
+      ${stepperRow('adult','Adults','🧑', remAdults)}
+      ${stepperRow('kid','Kids','🧒', remKids)}
+      <button type="button" class="btn btn-success btn-block" style="margin-top:8px;" onclick="servePlates(${b.id})">
         ✅ Confirm & Serve
       </button>
     </div>` : '';
@@ -391,30 +366,29 @@ function showResult(html){
 
 // ── Serve one or more plates ────────────────────────────────────────────
 async function servePlates(bid){
-  const rows = document.querySelectorAll('#relation-list .relation-row');
-  const relations = [];
-  for(const row of rows){
-    const sel = row.querySelector('.relation-select');
-    let val = sel.value;
-    if(val === 'Other'){
-      val = row.querySelector('.relation-other').value.trim();
-    }
-    if(!val){ showFlash('Please select a relation for every person.', 'warning'); return; }
-    relations.push(val);
-  }
-  if(relations.length === 0){ showFlash('Add at least one person.', 'warning'); return; }
+  const nAdults = parseInt(document.getElementById('serve-adult')?.textContent) || 0;
+  const nKids   = parseInt(document.getElementById('serve-kid')?.textContent)   || 0;
+  if(nAdults + nKids === 0){ showFlash('Select at least one Adult or Kid.', 'warning'); return; }
+
+  const types = [];
+  for(let i=0;i<nAdults;i++) types.push('adult');
+  for(let i=0;i<nKids;i++)   types.push('kid');
 
   const fd = new FormData();
   fd.append('booking_id', bid);
-  relations.forEach(r => fd.append('relations[]', r));
+  types.forEach(t => fd.append('types[]', t));
 
   try {
     const res  = await fetch(`${APP_URL}/api/consume.php`, { method:'POST', body:fd });
     const data = await res.json();
 
     if(data.success){
-      showFlash(`✅ ${data.served} plate(s) served: ${relations.join(', ')}`, 'success');
-      relations.forEach(r => addToLog(bid, r));
+      const parts = [];
+      if(nAdults) parts.push(`${nAdults} adult(s)`);
+      if(nKids)   parts.push(`${nKids} kid(s)`);
+      showFlash(`✅ Served ${parts.join(' + ')}`, 'success');
+      for(let i=0;i<nAdults;i++) addToLog(bid, 'Adult');
+      for(let i=0;i<nKids;i++)   addToLog(bid, 'Kid');
       // Re-fetch using the ORIGINAL code (fixes the "Invalid" bug)
       if(_currentCode){ fetchBooking(_currentCode); }
     } else if(data.message === 'limit_reached'){
