@@ -35,22 +35,47 @@ $statements = [
     created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
+/* ── Residents master list (Wing / Unit / Name) ─────────────────────────*/
+"CREATE TABLE IF NOT EXISTS residents (
+    id       INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    wing_no  TINYINT UNSIGNED NOT NULL,
+    unit     VARCHAR(20)  NOT NULL,
+    name     VARCHAR(200) NOT NULL DEFAULT '',
+    UNIQUE KEY uniq_wing_unit (wing_no, unit)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
 /* ── Bookings ───────────────────────────────────────────────────────────*/
 "CREATE TABLE IF NOT EXISTS bookings (
     id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id       VARCHAR(20)    NOT NULL UNIQUE,
     house_name     VARCHAR(200)   NOT NULL,
+    wing_no        TINYINT UNSIGNED NULL,
+    unit           VARCHAR(20)    NULL,
     owner_name     VARCHAR(200)   NOT NULL,
     contact_number VARCHAR(20)    NOT NULL,
-    headcount      TINYINT UNSIGNED NOT NULL,
+    headcount      SMALLINT UNSIGNED NOT NULL,
+    plates_kids    INT UNSIGNED   NOT NULL DEFAULT 0,
+    plates_adults  INT UNSIGNED   NOT NULL DEFAULT 0,
     price_per_plate DECIMAL(10,2) NOT NULL,
     total_amount   DECIMAL(10,2) NOT NULL,
-    secret_code    CHAR(6)        NOT NULL UNIQUE,
+    paid_amount    DECIMAL(10,2) NOT NULL DEFAULT 0,
+    secret_code    VARCHAR(20)    NOT NULL UNIQUE,
     booking_type   ENUM('agent','adhoc') NOT NULL DEFAULT 'agent',
     agent_id       INT UNSIGNED   NULL,
     notes          TEXT           NULL,
     created_at     TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_booking_agent FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+/* ── Booking edit audit log ─────────────────────────────────────────────*/
+"CREATE TABLE IF NOT EXISTS booking_edits (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    booking_id  INT UNSIGNED NOT NULL,
+    agent_id    INT UNSIGNED NULL,
+    editor_name VARCHAR(120) NOT NULL,
+    changes     TEXT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_edit_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
 
 /* ── Validators ─────────────────────────────────────────────────────────*/
@@ -76,6 +101,8 @@ $statements = [
 /* ── Seed default settings ──────────────────────────────────────────────*/
 "INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
     ('price_per_plate', '200'),
+    ('price_adults',    '200'),
+    ('price_kids',      '100'),
     ('event_name',      'Aaravam 2026 Onam Sadhya'),
     ('event_date',      '2026-09-12'),
     ('event_venue',     'Community Hall');",

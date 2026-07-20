@@ -11,16 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save_settings') {
-        $price = (float)($_POST['price_per_plate'] ?? 0);
-        if ($price > 0) {
-            setSetting('price_per_plate', (string)$price);
+        $priceAdults = (float)($_POST['price_adults'] ?? 0);
+        $priceKids   = (float)($_POST['price_kids']   ?? 0);
+        if ($priceAdults > 0 && $priceKids >= 0) {
+            setSetting('price_adults',    (string)$priceAdults);
+            setSetting('price_kids',      (string)$priceKids);
+            setSetting('price_per_plate', (string)$priceAdults);  // keep legacy key in sync
             setSetting('event_name',   trim($_POST['event_name']  ?? ''));
             setSetting('event_date',   trim($_POST['event_date']  ?? ''));
             setSetting('event_venue',  trim($_POST['event_venue'] ?? ''));
-            setSetting('validator_pin', trim($_POST['validator_pin'] ?? '999999'));
             $msg = 'ok:Settings saved successfully.';
         } else {
-            $msg = 'err:Price per plate must be greater than 0.';
+            $msg = 'err:Adult price must be greater than 0 and kids price cannot be negative.';
         }
     }
 
@@ -49,12 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$fallbackPrice = getSetting('price_per_plate', '200');
 $settings = [
-    'price_per_plate' => getSetting('price_per_plate', '200'),
+    'price_adults'    => getSetting('price_adults', $fallbackPrice),
+    'price_kids'      => getSetting('price_kids',   $fallbackPrice),
     'event_name'      => getSetting('event_name',  'Aaravam 2026 Onam Sadhya'),
     'event_date'      => getSetting('event_date',  ''),
     'event_venue'     => getSetting('event_venue', ''),
-    'validator_pin'   => getSetting('validator_pin', '999999'),
 ];
 
 $pageTitle = 'Settings';
@@ -97,17 +100,18 @@ include __DIR__ . '/../includes/header.php';
             <input type="text" name="event_venue" class="form-control" value="<?= h($settings['event_venue']) ?>" placeholder="Community Hall">
           </div>
         </div>
-        <div class="form-group">
-          <label>Price Per Plate (₹) <span class="req">*</span></label>
-          <input type="number" name="price_per_plate" class="form-control" value="<?= h($settings['price_per_plate']) ?>" min="1" step="0.01" required>
-          <small style="color:var(--text-mid);font-size:.78rem;">⚠ Changing this only affects new bookings, not existing ones.</small>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Price Per Plate — Adults (₹) <span class="req">*</span></label>
+            <input type="number" name="price_adults" class="form-control" value="<?= h($settings['price_adults']) ?>" min="1" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Price Per Plate — Kids (₹) <span class="req">*</span></label>
+            <input type="number" name="price_kids" class="form-control" value="<?= h($settings['price_kids']) ?>" min="0" step="0.01" required>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Validator PIN <span class="req">*</span></label>
-          <input type="text" name="validator_pin" class="form-control" value="<?= h($settings['validator_pin']) ?>" maxlength="10" required>
-          <small style="color:var(--text-mid);font-size:.78rem;">Dining hall validators use this PIN to log in.</small>
-        </div>
-        <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+        <small style="color:var(--text-mid);font-size:.78rem;">⚠ Changing prices only affects new bookings and re-calculations, not the paid amount already recorded.</small>
+        <div style="margin-top:14px;"><button type="submit" class="btn btn-primary">💾 Save Settings</button></div>
       </form>
     </div>
 

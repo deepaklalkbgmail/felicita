@@ -44,6 +44,7 @@ $showNav     = $showNav     ?? true;
         <a href="<?= APP_URL ?>/admin/agents.php"     class="<?= $activeNav==='agents'     ?'active':'' ?>"><span>👥</span> Agents</a>
         <a href="<?= APP_URL ?>/admin/validators.php" class="<?= $activeNav==='validators' ?'active':'' ?>"><span>🍛</span> Validators</a>
         <a href="<?= APP_URL ?>/admin/reports.php"  class="<?= $activeNav==='reports'   ?'active':'' ?>"><span>📋</span> Reports</a>
+        <a href="<?= APP_URL ?>/admin/edit_logs.php" class="<?= $activeNav==='edit_logs' ?'active':'' ?>"><span>🧾</span> Edit Logs</a>
         <a href="<?= APP_URL ?>/admin/settings.php" class="<?= $activeNav==='settings'  ?'active':'' ?>"><span>⚙️</span> Settings</a>
         <a href="<?= APP_URL ?>/logout.php" class="btn-logout">Logout</a>
       <?php elseif (isValidator()): ?>

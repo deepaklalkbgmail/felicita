@@ -13,16 +13,19 @@ $stats = $db->query("
     (SELECT COUNT(*) FROM bookings)                                         AS total_bookings,
     (SELECT SUM(headcount) FROM bookings)                                   AS total_plates,
     (SELECT SUM(total_amount) FROM bookings)                                AS total_revenue,
+    (SELECT SUM(paid_amount) FROM bookings)                                 AS total_paid,
     (SELECT COUNT(*) FROM consumption)                                      AS plates_served,
     (SELECT COUNT(*) FROM bookings WHERE booking_type='adhoc')              AS adhoc_bookings,
     (SELECT COUNT(*) FROM agents WHERE is_active=1)                         AS active_agents
 ")->fetch();
 
-$unused = (int)$stats['total_plates'] - (int)$stats['plates_served'];
+$unused     = (int)$stats['total_plates'] - (int)$stats['plates_served'];
+$totalDue   = (float)$stats['total_revenue'] - (float)$stats['total_paid'];
 
 // Recent bookings
 $recent = $db->query("
-  SELECT b.order_id, b.house_name, b.owner_name, b.headcount, b.total_amount,
+  SELECT b.order_id, b.house_name, b.owner_name, b.headcount,
+         b.plates_kids, b.plates_adults, b.total_amount, b.paid_amount,
          b.secret_code, b.created_at, a.name AS agent_name,
          (SELECT COUNT(*) FROM consumption c WHERE c.booking_id=b.id) AS consumed
   FROM   bookings b
@@ -68,7 +71,17 @@ include __DIR__ . '/../includes/header.php';
     <div class="stat-card gold">
       <div class="stat-icon">💰</div>
       <div class="stat-val">₹<?= number_format((float)$stats['total_revenue'], 0) ?></div>
-      <div class="stat-lbl">Total Revenue</div>
+      <div class="stat-lbl">Total Billed</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">✅</div>
+      <div class="stat-val">₹<?= number_format((float)$stats['total_paid'], 0) ?></div>
+      <div class="stat-lbl">Amount Collected</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-val">₹<?= number_format($totalDue, 0) ?></div>
+      <div class="stat-lbl">Payment Pending</div>
     </div>
     <div class="stat-card blue">
       <div class="stat-icon">👤</div>
@@ -115,23 +128,27 @@ include __DIR__ . '/../includes/header.php';
         <thead>
           <tr>
             <th>Order ID</th>
-            <th>House</th>
+            <th>Block / Unit</th>
             <th>Owner</th>
-            <th>Plates</th>
+            <th>Plates (A/K)</th>
             <th>Served</th>
             <th>Amount</th>
+            <th>Paid</th>
+            <th>Balance</th>
             <th>Agent</th>
             <th>Secret Code</th>
             <th>Time</th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($recent as $r): ?>
+          <?php foreach ($recent as $r):
+            $due = (float)$r['total_amount'] - (float)$r['paid_amount'];
+          ?>
           <tr>
             <td><strong><?= h($r['order_id']) ?></strong></td>
             <td><?= h($r['house_name']) ?></td>
             <td><?= h($r['owner_name']) ?></td>
-            <td><?= $r['headcount'] ?></td>
+            <td><?= (int)$r['plates_adults'] ?>/<?= (int)$r['plates_kids'] ?></td>
             <td>
               <?php
                 $c = (int)$r['consumed'];
@@ -141,13 +158,15 @@ include __DIR__ . '/../includes/header.php';
               <span class="badge <?= $cls ?>"><?= $c ?>/<?= $h ?></span>
             </td>
             <td>₹<?= number_format((float)$r['total_amount'], 0) ?></td>
+            <td>₹<?= number_format((float)$r['paid_amount'], 0) ?></td>
+            <td><span class="badge <?= $due > 0 ? 'badge-danger' : 'badge-success' ?>">₹<?= number_format($due, 0) ?></span></td>
             <td><?= h($r['agent_name'] ?? 'Admin') ?></td>
             <td><code style="font-size:.85rem;font-weight:600;letter-spacing:.1em;"><?= h($r['secret_code']) ?></code></td>
             <td style="white-space:nowrap;"><?= date('d M, H:i', strtotime($r['created_at'])) ?></td>
           </tr>
           <?php endforeach; ?>
           <?php if (empty($recent)): ?>
-          <tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-mid);">No bookings yet.</td></tr>
+          <tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-mid);">No bookings yet.</td></tr>
           <?php endif; ?>
         </tbody>
       </table>

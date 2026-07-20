@@ -66,6 +66,8 @@ if ($fStatus) {
 $totalBookings = count($allRows);
 $totalPlates   = array_sum(array_column($allRows,'headcount'));
 $totalRevenue  = array_sum(array_column($allRows,'total_amount'));
+$totalPaid     = array_sum(array_column($allRows,'paid_amount'));
+$totalDue      = $totalRevenue - $totalPaid;
 $totalServed   = array_sum(array_column($allRows,'consumed'));
 $totalUnused   = $totalPlates - $totalServed;
 
@@ -76,12 +78,14 @@ if ($export === 'csv') {
     header('Pragma: no-cache');
     $out = fopen('php://output', 'w');
     fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM for Excel
-    fputcsv($out, ['Order ID','House Name','Owner Name','Contact','Plates','Served','Remaining','Amount','Agent','Type','Secret Code','Date']);
+    fputcsv($out, ['Order ID','Block/Unit','Owner Name','Contact','Adults','Kids','Total Plates','Served','Remaining','Amount','Paid','Balance','Agent','Type','Secret Code','Date']);
     foreach ($allRows as $r) {
         fputcsv($out, [
             $r['order_id'], $r['house_name'], $r['owner_name'], $r['contact_number'],
-            $r['headcount'], $r['consumed'], $r['headcount']-$r['consumed'],
-            $r['total_amount'], $r['agent_name']??'Admin',
+            $r['plates_adults'], $r['plates_kids'], $r['headcount'],
+            $r['consumed'], $r['headcount']-$r['consumed'],
+            $r['total_amount'], $r['paid_amount'], $r['total_amount']-$r['paid_amount'],
+            $r['agent_name']??'Admin',
             $r['booking_type'], $r['secret_code'], $r['created_at'],
         ]);
     }
@@ -146,7 +150,17 @@ include __DIR__ . '/../includes/header.php';
     <div class="stat-card gold">
       <div class="stat-icon">💰</div>
       <div class="stat-val">₹<?= number_format($totalRevenue,0) ?></div>
-      <div class="stat-lbl">Revenue</div>
+      <div class="stat-lbl">Billed</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">✅</div>
+      <div class="stat-val">₹<?= number_format($totalPaid,0) ?></div>
+      <div class="stat-lbl">Collected</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-val">₹<?= number_format($totalDue,0) ?></div>
+      <div class="stat-lbl">Pending</div>
     </div>
   </div>
 
@@ -235,8 +249,8 @@ include __DIR__ . '/../includes/header.php';
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Order ID</th><th>House</th><th>Owner</th><th>Contact</th>
-            <th>Plates</th><th>Served</th><th>Remaining</th><th>Amount</th>
+            <th>#</th><th>Order ID</th><th>Block/Unit</th><th>Owner</th><th>Contact</th>
+            <th>Plates (A/K)</th><th>Served</th><th>Remaining</th><th>Amount</th><th>Paid</th><th>Balance</th>
             <th>Agent</th><th>Type</th><th>Secret Code</th><th>Date</th>
           </tr>
         </thead>
@@ -246,6 +260,7 @@ include __DIR__ . '/../includes/header.php';
             $h2 = (int)$r['headcount'];
             $rem = $h2 - $c;
             $cls = $c >= $h2 ? 'badge-danger' : ($c > 0 ? 'badge-warning' : 'badge-success');
+            $due = (float)$r['total_amount'] - (float)$r['paid_amount'];
           ?>
           <tr>
             <td style="color:var(--text-mid);"><?= $i+1 ?></td>
@@ -253,10 +268,12 @@ include __DIR__ . '/../includes/header.php';
             <td><?= h($r['house_name']) ?></td>
             <td><?= h($r['owner_name']) ?></td>
             <td><?= h($r['contact_number']) ?></td>
-            <td><?= $h2 ?></td>
+            <td><?= (int)$r['plates_adults'] ?>/<?= (int)$r['plates_kids'] ?></td>
             <td><?= $c ?></td>
             <td><span class="badge <?= $cls ?>"><?= $rem ?></span></td>
             <td>₹<?= number_format((float)$r['total_amount'],0) ?></td>
+            <td>₹<?= number_format((float)$r['paid_amount'],0) ?></td>
+            <td><span class="badge <?= $due > 0 ? 'badge-danger':'badge-success' ?>">₹<?= number_format($due,0) ?></span></td>
             <td><?= h($r['agent_name']??'Admin') ?></td>
             <td><span class="badge <?= $r['booking_type']==='adhoc'?'badge-gold':'badge-info' ?>"><?= h($r['booking_type']) ?></span></td>
             <td><code style="font-weight:700;letter-spacing:.1em;font-size:.82rem;"><?= h($r['secret_code']) ?></code></td>
@@ -264,17 +281,18 @@ include __DIR__ . '/../includes/header.php';
           </tr>
           <?php endforeach; ?>
           <?php if(empty($allRows)): ?>
-          <tr><td colspan="13" style="text-align:center;padding:24px;">No records match the selected filters.</td></tr>
+          <tr><td colspan="15" style="text-align:center;padding:24px;">No records match the selected filters.</td></tr>
           <?php endif; ?>
         </tbody>
         <?php if($totalBookings > 0): ?>
         <tfoot>
           <tr style="background:rgba(200,150,12,.08);font-weight:700;">
-            <td colspan="5" style="padding:10px 14px;text-align:right;color:var(--kasavu-deep);">Totals:</td>
-            <td style="padding:10px 14px;"><?= $totalPlates ?></td>
+            <td colspan="6" style="padding:10px 14px;text-align:right;color:var(--kasavu-deep);">Totals:</td>
             <td style="padding:10px 14px;"><?= $totalServed ?></td>
             <td style="padding:10px 14px;"><?= $totalUnused ?></td>
             <td style="padding:10px 14px;">₹<?= number_format($totalRevenue,0) ?></td>
+            <td style="padding:10px 14px;">₹<?= number_format($totalPaid,0) ?></td>
+            <td style="padding:10px 14px;">₹<?= number_format($totalDue,0) ?></td>
             <td colspan="4"></td>
           </tr>
         </tfoot>
@@ -288,16 +306,18 @@ include __DIR__ . '/../includes/header.php';
     <div class="card-header"><span class="card-icon">📅</span><h3>Check-in Log (Recent 100)</h3></div>
     <?php
       $checkIns = $db->query("
-          SELECT c.relation, c.served_at, b.order_id, b.house_name, b.owner_name
+          SELECT c.relation, c.served_at, b.order_id, b.house_name, b.owner_name,
+                 v.name AS validator_name
           FROM consumption c
           JOIN bookings b ON b.id = c.booking_id
+          LEFT JOIN validators v ON v.id = c.validator_id
           ORDER BY c.served_at DESC
           LIMIT 100
       ")->fetchAll();
     ?>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Time</th><th>Order ID</th><th>House</th><th>Relation</th></tr></thead>
+        <thead><tr><th>Time</th><th>Order ID</th><th>Block/Unit</th><th>Relation</th><th>Served By</th></tr></thead>
         <tbody>
           <?php foreach ($checkIns as $ci): ?>
           <tr>
@@ -305,10 +325,11 @@ include __DIR__ . '/../includes/header.php';
             <td><strong><?= h($ci['order_id']) ?></strong></td>
             <td><?= h($ci['house_name']) ?></td>
             <td><span class="badge badge-info"><?= h($ci['relation']) ?></span></td>
+            <td><?= h($ci['validator_name'] ?? 'Admin') ?></td>
           </tr>
           <?php endforeach; ?>
           <?php if(empty($checkIns)): ?>
-          <tr><td colspan="4" style="text-align:center;padding:20px;">No check-ins yet.</td></tr>
+          <tr><td colspan="5" style="text-align:center;padding:20px;">No check-ins yet.</td></tr>
           <?php endif; ?>
         </tbody>
       </table>

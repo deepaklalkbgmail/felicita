@@ -14,15 +14,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['adhoc'])) {
     $house   = trim($_POST['house_name']     ?? '');
     $owner   = trim($_POST['owner_name']     ?? '');
     $contact = trim($_POST['contact_number'] ?? '');
-    $hc      = (int)($_POST['headcount']     ?? 0);
+    $kids    = (int)($_POST['plates_kids']   ?? 0);
+    $adults  = (int)($_POST['plates_adults'] ?? 0);
+    $paid    = (float)($_POST['paid_amount'] ?? 0);
     $notes   = trim($_POST['notes']          ?? '');
 
-    if ($house && $owner && $contact && $hc >= 1) {
+    if ($house && $owner && $contact && ($kids + $adults) >= 1) {
         $newBooking = createBooking([
             'house_name'     => $house,
             'owner_name'     => $owner,
             'contact_number' => $contact,
-            'headcount'      => $hc,
+            'plates_kids'    => $kids,
+            'plates_adults'  => $adults,
+            'paid_amount'    => $paid,
             'notes'          => $notes,
             'booking_type'   => 'adhoc',
             'agent_id'       => null,
@@ -39,9 +43,9 @@ $type     = trim($_GET['type']      ?? '');
 $where  = ['1=1'];
 $params = [];
 if ($search) {
-    $where[]  = "(b.order_id LIKE ? OR b.house_name LIKE ? OR b.owner_name LIKE ? OR b.secret_code LIKE ?)";
+    $where[]  = "(b.order_id LIKE ? OR b.house_name LIKE ? OR b.owner_name LIKE ? OR b.secret_code LIKE ? OR b.unit LIKE ?)";
     $like = "%$search%";
-    $params   = array_merge($params, [$like, $like, $like, $like]);
+    $params   = array_merge($params, [$like, $like, $like, $like, $like]);
 }
 if ($agFilter) { $where[] = "b.agent_id = ?"; $params[] = $agFilter; }
 if ($type)     { $where[] = "b.booking_type = ?"; $params[] = $type; }
@@ -60,7 +64,7 @@ $bookings = $st->fetchAll();
 
 $agents = $db->query("SELECT id, name FROM agents ORDER BY name")->fetchAll();
 
-$pricePerPlate = (float) getSetting('price_per_plate', '200');
+$prices = getPrices();
 
 $pageTitle = 'Tickets';
 $activeNav = 'tickets';
@@ -86,10 +90,12 @@ include __DIR__ . '/../includes/header.php';
         <small><?= h($newBooking['order_id']) ?></small>
       </div>
       <div class="ticket-body">
-        <div class="ticket-row"><span class="lbl">House</span><span class="val"><?= h($newBooking['house_name']) ?></span></div>
+        <div class="ticket-row"><span class="lbl">Identifier</span><span class="val"><?= h($newBooking['house_name']) ?></span></div>
         <div class="ticket-row"><span class="lbl">Owner</span><span class="val"><?= h($newBooking['owner_name']) ?></span></div>
-        <div class="ticket-row"><span class="lbl">Plates</span><span class="val"><?= $newBooking['headcount'] ?></span></div>
+        <div class="ticket-row"><span class="lbl">Plates</span><span class="val"><?= (int)$newBooking['plates_adults'] ?> adult(s), <?= (int)$newBooking['plates_kids'] ?> kid(s)</span></div>
         <div class="ticket-row"><span class="lbl">Amount</span><span class="val">₹<?= number_format((float)$newBooking['total_amount'],2) ?></span></div>
+        <div class="ticket-row"><span class="lbl">Paid</span><span class="val">₹<?= number_format((float)$newBooking['paid_amount'],2) ?></span></div>
+        <div class="ticket-row"><span class="lbl">Balance</span><span class="val">₹<?= number_format((float)$newBooking['remaining_due'],2) ?></span></div>
       </div>
       <div class="secret-code-box" style="border-radius:0;">
         <div class="code-label">🔑 Secret Code</div>
@@ -163,8 +169,8 @@ include __DIR__ . '/../includes/header.php';
         <table>
           <thead>
             <tr>
-              <th>Order ID</th><th>House</th><th>Owner</th><th>Contact</th>
-              <th>Plates</th><th>Served</th><th>Amount</th>
+              <th>Order ID</th><th>Block / Unit</th><th>Owner</th><th>Contact</th>
+              <th>Plates (A/K)</th><th>Served</th><th>Amount</th><th>Paid</th><th>Balance</th>
               <th>Secret Code</th><th>Agent</th><th>Type</th><th>Date</th>
             </tr>
           </thead>
@@ -173,15 +179,18 @@ include __DIR__ . '/../includes/header.php';
               $c  = (int)$bk['consumed'];
               $h  = (int)$bk['headcount'];
               $cls = $c >= $h ? 'badge-danger' : ($c > 0 ? 'badge-warning' : 'badge-success');
+              $due = (float)$bk['total_amount'] - (float)$bk['paid_amount'];
             ?>
             <tr>
               <td><strong><?= h($bk['order_id']) ?></strong></td>
               <td><?= h($bk['house_name']) ?></td>
               <td><?= h($bk['owner_name']) ?></td>
               <td><?= h($bk['contact_number']) ?></td>
-              <td><?= $bk['headcount'] ?></td>
+              <td><?= (int)$bk['plates_adults'] ?>/<?= (int)$bk['plates_kids'] ?></td>
               <td><span class="badge <?= $cls ?>"><?= $c ?>/<?= $h ?></span></td>
               <td>₹<?= number_format((float)$bk['total_amount'],0) ?></td>
+              <td>₹<?= number_format((float)$bk['paid_amount'],0) ?></td>
+              <td><span class="badge <?= $due > 0 ? 'badge-danger' : 'badge-success' ?>">₹<?= number_format($due,0) ?></span></td>
               <td><code style="letter-spacing:.1em;font-weight:700;"><?= h($bk['secret_code']) ?></code></td>
               <td><?= h($bk['agent_name'] ?? 'Admin') ?></td>
               <td><span class="badge <?= $bk['booking_type']==='adhoc'?'badge-gold':'badge-info' ?>"><?= h($bk['booking_type']) ?></span></td>
@@ -189,7 +198,7 @@ include __DIR__ . '/../includes/header.php';
             </tr>
             <?php endforeach; ?>
             <?php if (empty($bookings)): ?>
-            <tr><td colspan="11" style="text-align:center;padding:24px;">No bookings found.</td></tr>
+            <tr><td colspan="13" style="text-align:center;padding:24px;">No bookings found.</td></tr>
             <?php endif; ?>
           </tbody>
         </table>
@@ -213,19 +222,29 @@ include __DIR__ . '/../includes/header.php';
             <input type="text" name="owner_name" class="form-control" placeholder="e.g. Smt. Radha Devi" required>
           </div>
         </div>
+        <div class="form-group">
+          <label>Contact <span class="req">*</span></label>
+          <input type="tel" name="contact_number" class="form-control" placeholder="9876543210" required>
+        </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Contact <span class="req">*</span></label>
-            <input type="tel" name="contact_number" class="form-control" placeholder="9876543210" required>
+            <label>Plates — Adults</label>
+            <input type="number" name="plates_adults" id="adhoc-adults" class="form-control adhoc-plate" min="0" max="100" value="1">
           </div>
           <div class="form-group">
-            <label>Plates <span class="req">*</span></label>
-            <input type="number" name="headcount" id="adhoc-hc" class="form-control" min="1" max="100" value="1" required>
+            <label>Plates — Kids</label>
+            <input type="number" name="plates_kids" id="adhoc-kids" class="form-control adhoc-plate" min="0" max="100" value="0">
           </div>
         </div>
-        <div class="form-group">
-          <label>Total Amount</label>
-          <input type="text" id="adhoc-total" class="form-control" readonly value="₹<?= number_format($pricePerPlate,2) ?>">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Total Amount</label>
+            <input type="text" id="adhoc-total" class="form-control" readonly>
+          </div>
+          <div class="form-group">
+            <label>Amount Paid (₹)</label>
+            <input type="number" name="paid_amount" id="adhoc-paid" class="form-control" min="0" step="0.01" value="0">
+          </div>
         </div>
         <div class="form-group">
           <label>Notes</label>
@@ -247,11 +266,17 @@ document.querySelectorAll('.tabs .tab').forEach(tab => {
   });
 });
 
-const PRICE = <?= $pricePerPlate ?>;
-document.getElementById('adhoc-hc')?.addEventListener('input', function(){
-  const n = parseInt(this.value)||0;
-  document.getElementById('adhoc-total').value = '₹' + (n*PRICE).toLocaleString('en-IN',{minimumFractionDigits:2});
-});
+const PRICE_ADULTS = <?= $prices['adults'] ?>;
+const PRICE_KIDS   = <?= $prices['kids'] ?>;
+function adhocRecalc(){
+  const a = parseInt(document.getElementById('adhoc-adults').value)||0;
+  const k = parseInt(document.getElementById('adhoc-kids').value)||0;
+  const total = a*PRICE_ADULTS + k*PRICE_KIDS;
+  const el = document.getElementById('adhoc-total');
+  if(el) el.value = '₹' + total.toLocaleString('en-IN',{minimumFractionDigits:2});
+}
+document.querySelectorAll('.adhoc-plate').forEach(el=>el.addEventListener('input', adhocRecalc));
+adhocRecalc();
 
 <?php if ($msg === 'adhoc_created'): ?>
 document.querySelector('[data-tab="list"]').click();

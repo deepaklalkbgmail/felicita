@@ -20,27 +20,54 @@ if (!$isAgent && !$isAdm) {
     jsonOut(['success' => false, 'message' => 'Unauthorised.']);
 }
 
-$house   = trim($_POST['house_name']      ?? '');
+$wingNo  = (int)($_POST['wing_no'] ?? 0);
+$unit    = trim($_POST['unit']            ?? '');
 $owner   = trim($_POST['owner_name']      ?? '');
 $contact = trim($_POST['contact_number']  ?? '');
-$hc      = (int)($_POST['headcount']      ?? 0);
+$kids    = (int)($_POST['plates_kids']    ?? 0);
+$adults  = (int)($_POST['plates_adults']  ?? 0);
+$paid    = (float)($_POST['paid_amount']  ?? 0);
 $notes   = trim($_POST['notes']           ?? '');
 $type    = $isAdm && !$isAgent ? 'adhoc' : 'agent';
 
-if (!$house || !$owner || !$contact || $hc < 1 || $hc > 200) {
-    jsonOut(['success' => false, 'message' => 'Please fill all required fields correctly.']);
-}
+$total = $kids + $adults;
 
+if (!$wingNo || !$unit) {
+    jsonOut(['success' => false, 'message' => 'Please select Block Number and Unit.']);
+}
+if (!$owner) {
+    jsonOut(['success' => false, 'message' => 'Owner name is required.']);
+}
+if (!$contact) {
+    jsonOut(['success' => false, 'message' => 'Contact number is required.']);
+}
+if ($total < 1 || $total > 200) {
+    jsonOut(['success' => false, 'message' => 'Enter at least one plate (kids or adults).']);
+}
 if (!preg_match('/^[0-9+\-\s]{7,15}$/', $contact)) {
     jsonOut(['success' => false, 'message' => 'Invalid contact number.']);
 }
 
+// Prevent duplicate booking for the same wing + unit
+$existing = findBookingByWingUnit($wingNo, $unit);
+if ($existing) {
+    jsonOut([
+        'success' => false,
+        'message' => 'A booking already exists for WING ' . $wingNo . ' - ' . $unit .
+                     '. Use "Edit Booking" to update it.',
+        'duplicate' => true,
+    ]);
+}
+
 try {
     $result = createBooking([
-        'house_name'     => $house,
+        'wing_no'        => $wingNo,
+        'unit'           => $unit,
         'owner_name'     => $owner,
         'contact_number' => $contact,
-        'headcount'      => $hc,
+        'plates_kids'    => $kids,
+        'plates_adults'  => $adults,
+        'paid_amount'    => $paid,
         'notes'          => $notes,
         'booking_type'   => $type,
         'agent_id'       => $isAgent ? $_SESSION['agent_id'] : null,

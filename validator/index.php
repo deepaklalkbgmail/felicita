@@ -46,7 +46,8 @@ include __DIR__ . '/../includes/header.php';
 
       <div class="tabs" id="input-tabs">
         <div class="tab active" data-tab="scan">📷 Scan QR</div>
-        <div class="tab"       data-tab="manual">⌨️ Manual Entry</div>
+        <div class="tab"       data-tab="manual">⌨️ Manual</div>
+        <div class="tab"       data-tab="wing">🏢 Wing / Door</div>
       </div>
 
       <!-- QR Scanner -->
@@ -62,9 +63,33 @@ include __DIR__ . '/../includes/header.php';
           <div class="form-group">
             <label>Secret Code or Order ID</label>
             <input type="text" id="code-input" class="form-control"
-              placeholder="e.g. AB3XY7" maxlength="20"
+              placeholder="e.g. 6107482" maxlength="20"
               autocomplete="off" autocapitalize="characters"
-              style="font-size:1.5rem;letter-spacing:.2em;text-align:center;text-transform:uppercase;">
+              style="font-size:1.5rem;letter-spacing:.15em;text-align:center;text-transform:uppercase;">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">🔍 Look Up</button>
+        </form>
+      </div>
+
+      <!-- Wing / Door -->
+      <div class="tab-panel" id="panel-wing">
+        <form id="wing-form" onsubmit="lookupWing(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Wing Number</label>
+              <select id="wing-select" class="form-control" required>
+                <option value="">— Select Wing —</option>
+                <?php foreach (getWingNumbers() as $w): ?>
+                  <option value="<?= $w ?>">WING <?= $w ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Door Number</label>
+              <select id="wing-unit-select" class="form-control" required disabled>
+                <option value="">— Select Wing first —</option>
+              </select>
+            </div>
           </div>
           <button type="submit" class="btn btn-primary btn-block">🔍 Look Up</button>
         </form>
@@ -95,19 +120,66 @@ const APP_URL = '<?= APP_URL ?>';
 let html5QrcodeScanner = null;
 let recentLog   = [];
 let _currentCode = null;   // the secret code / order id currently shown
+let _currentWing = null;   // { wing, unit } when looked up by wing/door
 
 const RELATION_OPTIONS = ['Self','Spouse','Son','Daughter','Father','Mother',
   'Brother','Sister','Guest','Neighbour','Relative','Other'];
 
+const _wingUnitCache = {};
+
 // ── Tab switching ──────────────────────────────────────────────────────
 document.querySelectorAll('#input-tabs .tab').forEach(tab => {
   tab.addEventListener('click', function(){
-    document.querySelectorAll('#input-tabs .tab, #panel-scan, #panel-manual').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('#input-tabs .tab, #panel-scan, #panel-manual, #panel-wing').forEach(el => el.classList.remove('active'));
     this.classList.add('active');
     document.getElementById('panel-' + this.dataset.tab).classList.add('active');
     if(this.dataset.tab !== 'scan') stopScanner();
   });
 });
+
+// ── Wing / Door cascade + lookup ───────────────────────────────────────
+document.getElementById('wing-select').addEventListener('change', async function(){
+  const unitSel = document.getElementById('wing-unit-select');
+  if(!this.value){ unitSel.disabled=true; unitSel.innerHTML='<option value="">— Select Wing first —</option>'; return; }
+  unitSel.disabled = true; unitSel.innerHTML = '<option value="">Loading…</option>';
+  let units = _wingUnitCache[this.value];
+  if(!units){
+    try {
+      const res = await fetch(`${APP_URL}/api/residents.php?wing=${this.value}`);
+      const data = await res.json();
+      units = data.success ? data.units : [];
+      _wingUnitCache[this.value] = units;
+    } catch(e){ units = []; }
+  }
+  let html = '<option value="">— Select Door —</option>';
+  units.forEach(u => {
+    const label = u.unit + (u.name ? ' — ' + u.name : '') + (u.booked ? ' ✓' : '');
+    html += `<option value="${escHtml(u.unit)}">${escHtml(label)}</option>`;
+  });
+  unitSel.innerHTML = html;
+  unitSel.disabled = false;
+});
+
+function lookupWing(e){
+  e.preventDefault();
+  const wing = document.getElementById('wing-select').value;
+  const unit = document.getElementById('wing-unit-select').value;
+  if(!wing || !unit){ showFlash('Select Wing and Door number.','warning'); return; }
+  fetchByWingUnit(wing, unit);
+}
+
+async function fetchByWingUnit(wing, unit){
+  _currentCode = null;
+  _currentWing = { wing, unit };
+  showResult('<div class="card"><div style="text-align:center;padding:24px;">⏳ Looking up…</div></div>');
+  try {
+    const res  = await fetch(`${APP_URL}/api/validate.php?wing=${wing}&unit=${encodeURIComponent(unit)}`);
+    const data = await res.json();
+    if(!data.success){ showResult(renderError(data.message || 'No booking found.')); return; }
+    _currentCode = data.booking.secret_code;   // reuse for post-serve refresh
+    showResult(renderBooking(data.booking));
+  } catch(err){ showResult(renderError('Network error. Please try again.')); }
+}
 
 // ── QR Scanner ─────────────────────────────────────────────────────────
 function startScanner(){
@@ -252,10 +324,30 @@ function renderBooking(b){
       </button>
     </div>` : '';
 
+  const paid = parseFloat(b.paid_amount||0);
+  const totalDue = parseFloat(b.total_amount||0);
+  const due  = parseFloat(b.remaining_due != null ? b.remaining_due : (totalDue - paid));
+  const platesLine = `${b.plates_adults||0} adult(s), ${b.plates_kids||0} kid(s)`;
+  const dueBadge = due > 0
+    ? `<span class="badge badge-danger">Balance ₹${due.toLocaleString('en-IN')}</span>`
+    : `<span class="badge badge-success">Fully Paid</span>`;
+
+  const payHtml = `
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(200,150,12,.06);border-radius:8px;font-size:.82rem;">
+      <div style="display:flex;justify-content:space-between;">
+        <span>Plates</span><strong>${platesLine}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-top:2px;">
+        <span>Amount</span><strong>₹${totalDue.toLocaleString('en-IN')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-top:2px;">
+        <span>Paid</span><strong>₹${paid.toLocaleString('en-IN')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;align-items:center;">
+        <span>Payment</span>${dueBadge}</div>
+    </div>`;
+
   return `<div class="card validation-result ${remaining===0?'danger':'success'}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
       <div>
-        <h4>🏠 ${escHtml(b.house_name)}</h4>
+        <h4>🏢 ${escHtml(b.house_name)}</h4>
         <p style="font-size:.88rem;margin-top:2px;">${escHtml(b.owner_name)} &bull; ${escHtml(b.contact_number)}</p>
         <p style="font-size:.78rem;color:var(--text-mid);">Order: ${escHtml(b.order_id)} &bull; Code: ${escHtml(b.secret_code)}</p>
       </div>
@@ -264,6 +356,7 @@ function renderBooking(b){
         <div style="font-size:.72rem;color:var(--text-mid);text-transform:uppercase;">Remaining</div>
       </div>
     </div>
+    ${payHtml}
 
     <div style="margin:12px 0;">
       <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-mid);margin-bottom:4px;">
