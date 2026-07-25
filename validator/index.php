@@ -63,7 +63,7 @@ include __DIR__ . '/../includes/header.php';
           <div class="form-group">
             <label>Secret Code or Order ID</label>
             <input type="text" id="code-input" class="form-control"
-              placeholder="e.g. 6107482" maxlength="20"
+              placeholder="e.g. 6107-482" maxlength="20"
               autocomplete="off" autocapitalize="characters"
               style="font-size:1.5rem;letter-spacing:.15em;text-align:center;text-transform:uppercase;">
           </div>

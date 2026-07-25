@@ -61,7 +61,8 @@ function generateWingSecretCode(?int $wingNo, ?string $unit): string {
     $door = strtoupper(preg_replace('/\s+/', '', $unit));   // "001 A" -> "001A"
     $base = $wingNo . $door;
     do {
-        $code = $base . random_int(100, 999);
+        // {Wing}{Door}-{random 3 digits} e.g. 6107-482 — hyphen aids recall
+        $code = $base . '-' . random_int(100, 999);
         $st = $db->prepare("SELECT id FROM bookings WHERE secret_code = ? LIMIT 1");
         $st->execute([$code]);
     } while ($st->fetch());
@@ -266,7 +267,8 @@ function lookupBooking(string $code): ?array {
     $db   = getDB();
     $code = strtoupper(trim($code));
 
-    // Accept secret code or order_id
+    // Accept secret code (with or without the hyphen) or order_id
+    $codeNoDash = str_replace('-', '', $code);
     $st = $db->prepare("
         SELECT b.*,
                a.name AS agent_name,
@@ -275,9 +277,9 @@ function lookupBooking(string $code): ?array {
                (SELECT COUNT(*) FROM consumption c WHERE c.booking_id = b.id AND c.person_type='kid')   AS served_kids
         FROM   bookings b
         LEFT JOIN agents a ON a.id = b.agent_id
-        WHERE  b.secret_code = ? OR b.order_id = ?
+        WHERE  b.secret_code = ? OR REPLACE(b.secret_code,'-','') = ? OR b.order_id = ?
         LIMIT  1");
-    $st->execute([$code, $code]);
+    $st->execute([$code, $codeNoDash, $code]);
     $row = $st->fetch();
     if (!$row) return null;
 
