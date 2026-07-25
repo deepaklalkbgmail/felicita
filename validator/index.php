@@ -426,7 +426,7 @@ function clearResult(){
 }
 
 function addToLog(bid, relation){
-  recentLog.unshift({ bid, relation, time: new Date().toLocaleTimeString() });
+  recentLog.unshift({ bid, relation, time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }) });
   if(recentLog.length > 30) recentLog.pop();
   renderLog();
 }
@@ -443,8 +443,18 @@ function renderLog(){
 }
 
 function fmtTime(ts){
-  try { return new Date(String(ts).replace(' ','T')).toLocaleTimeString(); }
-  catch(e){ return ts; }
+  if(!ts) return '';
+  // DB values already come back in IST from the server — read the time part
+  // straight from the string so device timezone can't shift it.
+  const m = String(ts).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(m){
+    let hh = parseInt(m[1],10);
+    const mm = m[2], ss = m[3] || '00';
+    const ap = hh >= 12 ? 'PM' : 'AM';
+    let h12 = hh % 12; if(h12 === 0) h12 = 12;
+    return `${h12}:${mm}:${ss} ${ap}`;
+  }
+  return ts;
 }
 
 function escHtml(s){

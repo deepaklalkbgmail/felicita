@@ -1,4 +1,7 @@
 <?php
+// All dates/times across the app are shown in India Standard Time (IST)
+date_default_timezone_set('Asia/Kolkata');
+
 define('DB_HOST', 'localhost');
 define('DB_USER', 'your_db_user');
 define('DB_PASS', 'your_db_password');
@@ -23,6 +26,8 @@ function getDB(): PDO {
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ]
             );
+            // Make MySQL return/store TIMESTAMP values in IST for this session
+            $_pdo->exec("SET time_zone = '+05:30'");
         } catch (PDOException $e) {
             http_response_code(500);
             die(json_encode(['success' => false, 'message' => 'Database connection failed.']));
