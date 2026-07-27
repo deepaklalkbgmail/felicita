@@ -170,7 +170,7 @@ include __DIR__ . '/../includes/header.php';
           <thead>
             <tr>
               <th>Order ID</th><th>Block / Unit</th><th>Owner</th><th>Contact</th>
-              <th>Plates (A/K)</th><th>Served</th><th>Amount</th><th>Paid</th><th>Balance</th>
+              <th>Plates (A/K)</th><th>Served</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Paid To</th>
               <th>Secret Code</th><th>Agent</th><th>Type</th><th>Date</th>
             </tr>
           </thead>
@@ -191,6 +191,7 @@ include __DIR__ . '/../includes/header.php';
               <td>₹<?= number_format((float)$bk['total_amount'],0) ?></td>
               <td>₹<?= number_format((float)$bk['paid_amount'],0) ?></td>
               <td><span class="badge <?= $due > 0 ? 'badge-danger' : 'badge-success' ?>">₹<?= number_format($due,0) ?></span></td>
+              <td><?= $bk['paid_to'] ? h($bk['paid_to']) : '<span style="color:var(--text-mid);">—</span>' ?></td>
               <td><code style="letter-spacing:.1em;font-weight:700;"><?= h($bk['secret_code']) ?></code></td>
               <td><?= h($bk['agent_name'] ?? 'Admin') ?></td>
               <td><span class="badge <?= $bk['booking_type']==='adhoc'?'badge-gold':'badge-info' ?>"><?= h($bk['booking_type']) ?></span></td>
@@ -198,7 +199,7 @@ include __DIR__ . '/../includes/header.php';
             </tr>
             <?php endforeach; ?>
             <?php if (empty($bookings)): ?>
-            <tr><td colspan="13" style="text-align:center;padding:24px;">No bookings found.</td></tr>
+            <tr><td colspan="14" style="text-align:center;padding:24px;">No bookings found.</td></tr>
             <?php endif; ?>
           </tbody>
         </table>

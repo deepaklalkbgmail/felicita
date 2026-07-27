@@ -27,7 +27,13 @@ $contact = trim($_POST['contact_number']  ?? '');
 $kids    = (int)($_POST['plates_kids']    ?? 0);
 $adults  = (int)($_POST['plates_adults']  ?? 0);
 $paid    = (float)($_POST['paid_amount']  ?? 0);
+$paidTo  = trim($_POST['paid_to']         ?? '');
 $notes   = trim($_POST['notes']           ?? '');
+
+// Validate paid_to against the configured account list
+if ($paidTo !== '' && !in_array($paidTo, getPaidToOptions(), true)) {
+    jsonOut(['success' => false, 'message' => 'Invalid "Paid to" account.']);
+}
 $type    = $isAdm && !$isAgent ? 'adhoc' : 'agent';
 
 $total = $kids + $adults;
@@ -68,6 +74,7 @@ try {
         'plates_kids'    => $kids,
         'plates_adults'  => $adults,
         'paid_amount'    => $paid,
+        'paid_to'        => $paidTo,
         'notes'          => $notes,
         'booking_type'   => $type,
         'agent_id'       => $isAgent ? $_SESSION['agent_id'] : null,

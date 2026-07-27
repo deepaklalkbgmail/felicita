@@ -30,6 +30,14 @@ function getPrices(): array {
     ];
 }
 
+/* Accounts a payment can be collected into ("Paid to"). Configurable via the
+   `paid_to_options` setting (comma-separated); sensible default otherwise. */
+function getPaidToOptions(): array {
+    $raw = getSetting('paid_to_options', 'Deepaklal,Naveen,Arun Vishnu');
+    $opts = array_values(array_filter(array_map('trim', explode(',', $raw)), fn($o) => $o !== ''));
+    return $opts ?: ['Deepaklal', 'Naveen', 'Arun Vishnu'];
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    SECRET CODE GENERATOR
    Characters: 2-9, A-Z (except O), uppercase only — no 0,1,O,l,o
@@ -103,6 +111,7 @@ function createBooking(array $data): array {
 
     $totalAmount = $kids * $prices['kids'] + $adults * $prices['adults'];
     $paid        = max(0, (float)($data['paid_amount'] ?? 0));
+    $paidTo      = isset($data['paid_to']) && trim((string)$data['paid_to']) !== '' ? trim($data['paid_to']) : null;
 
     // House label: prefer explicit, else "WING N - UNIT"
     $house = trim((string)($data['house_name'] ?? ''));
@@ -120,9 +129,9 @@ function createBooking(array $data): array {
     $db->prepare("INSERT INTO bookings
         (order_id, house_name, wing_no, unit, owner_name, contact_number,
          headcount, plates_kids, plates_adults,
-         price_per_plate, total_amount, paid_amount,
+         price_per_plate, total_amount, paid_amount, paid_to,
          secret_code, booking_type, agent_id, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
        ->execute([
            $orderId,
            $house,
@@ -136,6 +145,7 @@ function createBooking(array $data): array {
            $refPrice,
            $totalAmount,
            $paid,
+           $paidTo,
            $secretCode,
            $type,
            $agentId,
@@ -153,6 +163,7 @@ function createBooking(array $data): array {
         'plates_adults'  => $adults,
         'total_amount'   => $totalAmount,
         'paid_amount'    => $paid,
+        'paid_to'        => $paidTo,
         'remaining_due'  => $totalAmount - $paid,
         'price_per_plate'=> $refPrice,
         'wing_no'        => $wingNo,
@@ -211,6 +222,7 @@ function updateBooking(int $bookingId, array $new, ?int $agentId, string $editor
     $kids      = array_key_exists('plates_kids', $new)    ? max(0,(int)$new['plates_kids'])       : (int)$old['plates_kids'];
     $adults    = array_key_exists('plates_adults', $new)  ? max(0,(int)$new['plates_adults'])     : (int)$old['plates_adults'];
     $paid      = array_key_exists('paid_amount', $new)    ? max(0,(float)$new['paid_amount'])     : (float)$old['paid_amount'];
+    $paidTo    = array_key_exists('paid_to', $new)        ? trim((string)$new['paid_to'])         : (string)($old['paid_to'] ?? '');
 
     $headcount   = $kids + $adults;
     if ($headcount < 1) return ['success' => false, 'message' => 'Total plates must be at least 1.'];
@@ -232,6 +244,7 @@ function updateBooking(int $bookingId, array $new, ?int $agentId, string $editor
         'plates_kids'    => [(int)$old['plates_kids'],      $kids],
         'plates_adults'  => [(int)$old['plates_adults'],    $adults],
         'paid_amount'    => [(float)$old['paid_amount'],    $paid],
+        'paid_to'        => [(string)($old['paid_to'] ?? ''), $paidTo],
     ];
     $changes = [];
     foreach ($fields as $k => [$o, $n]) {
@@ -242,8 +255,8 @@ function updateBooking(int $bookingId, array $new, ?int $agentId, string $editor
 
     $db->prepare("UPDATE bookings
         SET owner_name=?, contact_number=?, plates_kids=?, plates_adults=?,
-            headcount=?, total_amount=?, paid_amount=? WHERE id=?")
-       ->execute([$ownerName, $contact, $kids, $adults, $headcount, $total, $paid, $bookingId]);
+            headcount=?, total_amount=?, paid_amount=?, paid_to=? WHERE id=?")
+       ->execute([$ownerName, $contact, $kids, $adults, $headcount, $total, $paid, ($paidTo === '' ? null : $paidTo), $bookingId]);
 
     $db->prepare("INSERT INTO booking_edits (booking_id, agent_id, editor_name, changes) VALUES (?,?,?,?)")
        ->execute([$bookingId, $agentId, $editorName, json_encode($changes, JSON_UNESCAPED_UNICODE)]);

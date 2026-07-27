@@ -51,8 +51,13 @@ $editorName = $isAgent
     : ($_SESSION['admin_user'] ?? 'Admin');
 $agentId = $isAgent ? (int)$_SESSION['agent_id'] : null;
 
+// Validate paid_to against the configured account list
+if (isset($_POST['paid_to']) && $_POST['paid_to'] !== '' && !in_array($_POST['paid_to'], getPaidToOptions(), true)) {
+    jsonOut(['success' => false, 'message' => 'Invalid "Paid to" account.']);
+}
+
 $new = [];
-foreach (['owner_name', 'contact_number', 'plates_kids', 'plates_adults', 'paid_amount'] as $f) {
+foreach (['owner_name', 'contact_number', 'plates_kids', 'plates_adults', 'paid_amount', 'paid_to'] as $f) {
     if (isset($_POST[$f]) && $_POST[$f] !== '') $new[$f] = $_POST[$f];
 }
 

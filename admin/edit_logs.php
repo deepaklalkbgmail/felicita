@@ -40,6 +40,7 @@ function fieldLabel(string $f): string {
         'plates_kids'    => 'Kids Plates',
         'plates_adults'  => 'Adult Plates',
         'paid_amount'    => 'Paid Amount',
+        'paid_to'        => 'Paid To',
     ][$f] ?? $f;
 }
 

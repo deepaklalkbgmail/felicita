@@ -11,11 +11,12 @@ if (empty($_SESSION['agent_id']) && !isAdmin()) {
     exit;
 }
 
-$agentName  = $_SESSION['agent_name'] ?? 'Admin';
-$prices     = getPrices();
-$eventName  = getSetting('event_name', 'Onam Sadhya');
-$eventDate  = getSetting('event_date', '');
-$wings      = getWingNumbers();
+$agentName    = $_SESSION['agent_name'] ?? 'Admin';
+$prices       = getPrices();
+$eventName    = getSetting('event_name', 'Onam Sadhya');
+$eventDate    = getSetting('event_date', '');
+$wings        = getWingNumbers();
+$paidToOpts   = getPaidToOptions();
 
 $pageTitle = 'Book Sadhya';
 $activeNav = '';
@@ -103,9 +104,20 @@ include __DIR__ . '/../includes/header.php';
             <input type="number" name="paid_amount" id="paid_amount" class="form-control" min="0" step="0.01" value="0">
           </div>
         </div>
-        <div class="form-group">
-          <label>Balance Due</label>
-          <input type="text" id="due_display" class="form-control" readonly>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Balance Due</label>
+            <input type="text" id="due_display" class="form-control" readonly>
+          </div>
+          <div class="form-group">
+            <label>Paid To <span class="req">*</span></label>
+            <select name="paid_to" id="paid_to" class="form-control" required>
+              <option value="">— Select Account —</option>
+              <?php foreach ($paidToOpts as $opt): ?>
+                <option value="<?= h($opt) ?>"><?= h($opt) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
         </div>
 
         <div class="form-group">
@@ -140,6 +152,7 @@ include __DIR__ . '/../includes/header.php';
             <div class="ticket-row"><span class="lbl">Amount</span><span class="val" id="t-amount"></span></div>
             <div class="ticket-row"><span class="lbl">Paid</span><span class="val" id="t-paid"></span></div>
             <div class="ticket-row"><span class="lbl">Balance</span><span class="val" id="t-due"></span></div>
+            <div class="ticket-row"><span class="lbl">Paid To</span><span class="val" id="t-paidto"></span></div>
             <div class="ticket-row"><span class="lbl">Agent</span><span class="val"><?= h($agentName) ?></span></div>
           </div>
           <div class="secret-code-box" style="margin:0;border-radius:0;">
@@ -223,9 +236,20 @@ include __DIR__ . '/../includes/header.php';
             <input type="number" id="edit_paid" class="form-control" min="0" step="0.01" value="0">
           </div>
         </div>
-        <div class="form-group">
-          <label>Balance Due</label>
-          <input type="text" id="edit_due" class="form-control" readonly>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Balance Due</label>
+            <input type="text" id="edit_due" class="form-control" readonly>
+          </div>
+          <div class="form-group">
+            <label>Paid To</label>
+            <select id="edit_paid_to" class="form-control">
+              <option value="">— Select Account —</option>
+              <?php foreach ($paidToOpts as $opt): ?>
+                <option value="<?= h($opt) ?>"><?= h($opt) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
         </div>
         <p style="font-size:.78rem;color:var(--text-mid);">All edits are logged for audit (visible to admin).</p>
         <button type="submit" class="btn btn-success btn-block">💾 Save Changes</button>
@@ -336,6 +360,7 @@ function renderTicket(data){
   document.getElementById('t-amount').textContent  = money(data.total_amount);
   document.getElementById('t-paid').textContent    = money(data.paid_amount);
   document.getElementById('t-due').textContent     = money(data.remaining_due);
+  document.getElementById('t-paidto').textContent  = data.paid_to || '—';
   document.getElementById('t-code').textContent    = data.secret_code;
 
   const charsEl = document.getElementById('t-code-chars');
@@ -406,6 +431,7 @@ async function loadForEdit(){
     document.getElementById('edit_adults').value  = b.plates_adults;
     document.getElementById('edit_kids').value    = b.plates_kids;
     document.getElementById('edit_paid').value    = b.paid_amount;
+    document.getElementById('edit_paid_to').value = b.paid_to || '';
     recalcEdit();
     document.getElementById('edit-form-card').style.display = 'block';
     document.getElementById('edit-form-card').scrollIntoView({behavior:'smooth'});
@@ -431,6 +457,7 @@ document.getElementById('edit-form').addEventListener('submit', async function(e
   fd.append('plates_adults',  document.getElementById('edit_adults').value);
   fd.append('plates_kids',    document.getElementById('edit_kids').value);
   fd.append('paid_amount',    document.getElementById('edit_paid').value);
+  fd.append('paid_to',        document.getElementById('edit_paid_to').value);
   try {
     const res = await fetch(`${APP_URL}/api/booking_edit.php`, { method:'POST', body: fd });
     const data = await res.json();

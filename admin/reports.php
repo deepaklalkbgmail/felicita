@@ -14,6 +14,7 @@ $fStatus   = trim($_GET['status']     ?? '');          // consumed|unused|partia
 $fDateFrom = trim($_GET['date_from']  ?? '');
 $fDateTo   = trim($_GET['date_to']    ?? '');
 $fSearch   = trim($_GET['search']     ?? '');
+$fPaidTo   = trim($_GET['paid_to']    ?? '');
 $export    = trim($_GET['export']     ?? '');          // csv
 
 // ── Build query ───────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ $params = [];
 
 if ($fType)   { $where[] = "b.booking_type = ?";  $params[] = $fType; }
 if ($fAgent)  { $where[] = "b.agent_id = ?";       $params[] = $fAgent; }
+if ($fPaidTo) { $where[] = "b.paid_to = ?";        $params[] = $fPaidTo; }
 if ($fDateFrom){ $where[] = "DATE(b.created_at) >= ?"; $params[] = $fDateFrom; }
 if ($fDateTo)  { $where[] = "DATE(b.created_at) <= ?"; $params[] = $fDateTo; }
 if ($fSearch) {
@@ -71,6 +73,16 @@ $totalDue      = $totalRevenue - $totalPaid;
 $totalServed   = array_sum(array_column($allRows,'consumed'));
 $totalUnused   = $totalPlates - $totalServed;
 
+// Collections grouped by "Paid to" account (respects current filters)
+$collByAccount = [];
+foreach ($allRows as $r) {
+    $acct = ($r['paid_to'] ?? '') !== '' ? $r['paid_to'] : '— Unassigned —';
+    if (!isset($collByAccount[$acct])) $collByAccount[$acct] = ['count' => 0, 'collected' => 0.0];
+    $collByAccount[$acct]['count']++;
+    $collByAccount[$acct]['collected'] += (float)$r['paid_amount'];
+}
+uasort($collByAccount, fn($a, $b) => $b['collected'] <=> $a['collected']);
+
 // ── CSV Export ────────────────────────────────────────────────────────────
 if ($export === 'csv') {
     header('Content-Type: text/csv; charset=UTF-8');
@@ -78,13 +90,14 @@ if ($export === 'csv') {
     header('Pragma: no-cache');
     $out = fopen('php://output', 'w');
     fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM for Excel
-    fputcsv($out, ['Order ID','Block/Unit','Owner Name','Contact','Adults','Kids','Total Plates','Served','Remaining','Amount','Paid','Balance','Agent','Type','Secret Code','Date']);
+    fputcsv($out, ['Order ID','Block/Unit','Owner Name','Contact','Adults','Kids','Total Plates','Served','Remaining','Amount','Paid','Balance','Paid To','Agent','Type','Secret Code','Date']);
     foreach ($allRows as $r) {
         fputcsv($out, [
             $r['order_id'], $r['house_name'], $r['owner_name'], $r['contact_number'],
             $r['plates_adults'], $r['plates_kids'], $r['headcount'],
             $r['consumed'], $r['headcount']-$r['consumed'],
             $r['total_amount'], $r['paid_amount'], $r['total_amount']-$r['paid_amount'],
+            $r['paid_to'] ?? '',
             $r['agent_name']??'Admin',
             $r['booking_type'], $r['secret_code'], $r['created_at'],
         ]);
@@ -112,6 +125,7 @@ $timeline = $db->query("
 ")->fetchAll();
 
 $agents = $db->query("SELECT id,name FROM agents ORDER BY name")->fetchAll();
+$paidToOpts = getPaidToOptions();
 
 $pageTitle = 'Reports';
 $activeNav = 'reports';
@@ -198,6 +212,15 @@ include __DIR__ . '/../includes/header.php';
         </select>
       </div>
       <div class="form-group">
+        <label>Paid To</label>
+        <select name="paid_to" class="form-control">
+          <option value="">All Accounts</option>
+          <?php foreach ($paidToOpts as $opt): ?>
+            <option value="<?= h($opt) ?>" <?= $fPaidTo===$opt?'selected':'' ?>><?= h($opt) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Date From</label>
         <input type="date" name="date_from" class="form-control" value="<?= h($fDateFrom) ?>">
       </div>
@@ -208,10 +231,41 @@ include __DIR__ . '/../includes/header.php';
       <div class="form-group" style="align-self:flex-end;display:flex;gap:6px;flex-wrap:wrap;">
         <button type="submit" class="btn btn-primary">🔍 Filter</button>
         <a href="<?= APP_URL ?>/admin/reports.php" class="btn btn-secondary">Clear</a>
-        <a href="?<?= h(http_build_query(array_filter(['search'=>$fSearch,'agent_id'=>$fAgent,'type'=>$fType,'status'=>$fStatus,'date_from'=>$fDateFrom,'date_to'=>$fDateTo]))) ?>&export=csv"
+        <a href="?<?= h(http_build_query(array_filter(['search'=>$fSearch,'agent_id'=>$fAgent,'type'=>$fType,'status'=>$fStatus,'paid_to'=>$fPaidTo,'date_from'=>$fDateFrom,'date_to'=>$fDateTo]))) ?>&export=csv"
            class="btn btn-success">📥 CSV</a>
       </div>
     </form>
+  </div>
+
+  <!-- Collections by account ("Paid to") -->
+  <div class="card">
+    <div class="card-header"><span class="card-icon">🏦</span><h3>Collections by Account (Paid To)</h3></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Account</th><th>Bookings</th><th>Amount Collected</th></tr></thead>
+        <tbody>
+          <?php foreach ($collByAccount as $acct => $info): ?>
+          <tr>
+            <td><strong><?= h($acct) ?></strong></td>
+            <td><?= (int)$info['count'] ?></td>
+            <td>₹<?= number_format($info['collected'],0) ?></td>
+          </tr>
+          <?php endforeach; ?>
+          <?php if(empty($collByAccount)): ?>
+          <tr><td colspan="3" style="text-align:center;padding:20px;">No collections yet.</td></tr>
+          <?php endif; ?>
+        </tbody>
+        <?php if(!empty($collByAccount)): ?>
+        <tfoot>
+          <tr style="background:rgba(200,150,12,.08);font-weight:700;">
+            <td style="padding:10px 14px;text-align:right;color:var(--kasavu-deep);">Total Collected:</td>
+            <td></td>
+            <td style="padding:10px 14px;">₹<?= number_format($totalPaid,0) ?></td>
+          </tr>
+        </tfoot>
+        <?php endif; ?>
+      </table>
+    </div>
   </div>
 
   <!-- Agent-wise summary -->
@@ -250,7 +304,7 @@ include __DIR__ . '/../includes/header.php';
         <thead>
           <tr>
             <th>#</th><th>Order ID</th><th>Block/Unit</th><th>Owner</th><th>Contact</th>
-            <th>Plates (A/K)</th><th>Served</th><th>Remaining</th><th>Amount</th><th>Paid</th><th>Balance</th>
+            <th>Plates (A/K)</th><th>Served</th><th>Remaining</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Paid To</th>
             <th>Agent</th><th>Type</th><th>Secret Code</th><th>Date</th>
           </tr>
         </thead>
@@ -274,6 +328,7 @@ include __DIR__ . '/../includes/header.php';
             <td>₹<?= number_format((float)$r['total_amount'],0) ?></td>
             <td>₹<?= number_format((float)$r['paid_amount'],0) ?></td>
             <td><span class="badge <?= $due > 0 ? 'badge-danger':'badge-success' ?>">₹<?= number_format($due,0) ?></span></td>
+            <td><?= $r['paid_to'] ? h($r['paid_to']) : '<span style="color:var(--text-mid);">—</span>' ?></td>
             <td><?= h($r['agent_name']??'Admin') ?></td>
             <td><span class="badge <?= $r['booking_type']==='adhoc'?'badge-gold':'badge-info' ?>"><?= h($r['booking_type']) ?></span></td>
             <td><code style="font-weight:700;letter-spacing:.1em;font-size:.82rem;"><?= h($r['secret_code']) ?></code></td>
@@ -281,7 +336,7 @@ include __DIR__ . '/../includes/header.php';
           </tr>
           <?php endforeach; ?>
           <?php if(empty($allRows)): ?>
-          <tr><td colspan="15" style="text-align:center;padding:24px;">No records match the selected filters.</td></tr>
+          <tr><td colspan="16" style="text-align:center;padding:24px;">No records match the selected filters.</td></tr>
           <?php endif; ?>
         </tbody>
         <?php if($totalBookings > 0): ?>
@@ -293,7 +348,7 @@ include __DIR__ . '/../includes/header.php';
             <td style="padding:10px 14px;">₹<?= number_format($totalRevenue,0) ?></td>
             <td style="padding:10px 14px;">₹<?= number_format($totalPaid,0) ?></td>
             <td style="padding:10px 14px;">₹<?= number_format($totalDue,0) ?></td>
-            <td colspan="4"></td>
+            <td colspan="5"></td>
           </tr>
         </tfoot>
         <?php endif; ?>
