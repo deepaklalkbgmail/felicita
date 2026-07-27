@@ -110,8 +110,8 @@ include __DIR__ . '/../includes/header.php';
             <input type="text" id="due_display" class="form-control" readonly>
           </div>
           <div class="form-group">
-            <label>Paid To <span class="req">*</span></label>
-            <select name="paid_to" id="paid_to" class="form-control" required>
+            <label>Paid To <span class="req" id="paid_to_star" style="display:none;">*</span></label>
+            <select name="paid_to" id="paid_to" class="form-control">
               <option value="">— Select Account —</option>
               <?php foreach ($paidToOpts as $opt): ?>
                 <option value="<?= h($opt) ?>"><?= h($opt) ?></option>
@@ -242,7 +242,7 @@ include __DIR__ . '/../includes/header.php';
             <input type="text" id="edit_due" class="form-control" readonly>
           </div>
           <div class="form-group">
-            <label>Paid To</label>
+            <label>Paid To <span class="req" id="edit_paid_to_star" style="display:none;">*</span></label>
             <select id="edit_paid_to" class="form-control">
               <option value="">— Select Account —</option>
               <?php foreach ($paidToOpts as $opt): ?>
@@ -324,6 +324,11 @@ function recalcNew(){
   const paid  = parseFloat(document.getElementById('paid_amount').value)||0;
   document.getElementById('total_display').value = money(total);
   document.getElementById('due_display').value   = money(Math.max(0,total-paid));
+  // "Paid To" is required only when an amount has actually been paid
+  const pt = document.getElementById('paid_to');
+  const star = document.getElementById('paid_to_star');
+  if(paid > 0){ pt.required = true;  star.style.display = 'inline'; }
+  else        { pt.required = false; star.style.display = 'none'; }
 }
 document.querySelectorAll('.plate-input, #paid_amount').forEach(el=>el.addEventListener('input', recalcNew));
 recalcNew();
@@ -445,6 +450,10 @@ function recalcEdit(){
   const paid  = parseFloat(document.getElementById('edit_paid').value)||0;
   document.getElementById('edit_total').value = money(total);
   document.getElementById('edit_due').value   = money(Math.max(0,total-paid));
+  const pt = document.getElementById('edit_paid_to');
+  const star = document.getElementById('edit_paid_to_star');
+  if(paid > 0){ pt.required = true;  star.style.display = 'inline'; }
+  else        { pt.required = false; star.style.display = 'none'; }
 }
 document.querySelectorAll('.edit-plate, #edit_paid').forEach(el=>el.addEventListener('input', recalcEdit));
 

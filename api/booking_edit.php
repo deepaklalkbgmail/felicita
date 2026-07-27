@@ -55,6 +55,10 @@ $agentId = $isAgent ? (int)$_SESSION['agent_id'] : null;
 if (isset($_POST['paid_to']) && $_POST['paid_to'] !== '' && !in_array($_POST['paid_to'], getPaidToOptions(), true)) {
     jsonOut(['success' => false, 'message' => 'Invalid "Paid to" account.']);
 }
+// "Paid to" is required only when the (new) paid amount is greater than zero
+if (isset($_POST['paid_amount']) && (float)$_POST['paid_amount'] > 0 && trim($_POST['paid_to'] ?? '') === '') {
+    jsonOut(['success' => false, 'message' => 'Please select "Paid to" account when an amount is paid.']);
+}
 
 $new = [];
 foreach (['owner_name', 'contact_number', 'plates_kids', 'plates_adults', 'paid_amount', 'paid_to'] as $f) {

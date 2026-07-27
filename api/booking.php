@@ -34,6 +34,10 @@ $notes   = trim($_POST['notes']           ?? '');
 if ($paidTo !== '' && !in_array($paidTo, getPaidToOptions(), true)) {
     jsonOut(['success' => false, 'message' => 'Invalid "Paid to" account.']);
 }
+// "Paid to" is required only when an amount has actually been paid
+if ($paid > 0 && $paidTo === '') {
+    jsonOut(['success' => false, 'message' => 'Please select "Paid to" account when an amount is paid.']);
+}
 $type    = $isAdm && !$isAgent ? 'adhoc' : 'agent';
 
 $total = $kids + $adults;
